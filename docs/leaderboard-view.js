@@ -28,7 +28,7 @@ function metricOf(eventId, entry) {
 function renderTop(top) {
   if (top.length === 0) return '<p class="empty">EI VIELÄ TULOKSIA</p>';
   const rows = top.map((entry, index) => (
-    `<tr><td class="rank">${index + 1}.</td><td>${escapeHtml(entry.nickname)}</td><td class="num">${entry.total}</td></tr>`
+    `<tr><td class="rank">${index + 1}.</td><td>${escapeHtml(entry.nickname)}</td><td class="num">${escapeHtml(entry.total)}</td></tr>`
   ));
   return `<table class="top">${rows.join('')}</table>`;
 }
@@ -39,7 +39,7 @@ function renderRecords(records) {
     if (!record) return `<tr><td>${name}</td><td>-</td><td></td><td></td></tr>`;
     return `<tr><td>${name}</td><td>${escapeHtml(record.nickname)}</td>`
       + `<td class="num">${formatMetric(eventId, metricOf(eventId, record))}</td>`
-      + `<td class="num">${record.points} p</td></tr>`;
+      + `<td class="num">${escapeHtml(record.points)} p</td></tr>`;
   });
   return `<table>${rows.join('')}</table>`;
 }
@@ -49,8 +49,8 @@ function renderRecent(recent) {
   const header = '<tr><th>PVM</th><th>PELAAJA</th><th>MÄKI</th><th>PUJO</th><th>KELKKA</th><th>YHT</th></tr>';
   const rows = recent.map((entry) => (
     `<tr><td>${formatDate(entry.date)}</td><td>${escapeHtml(entry.nickname)}</td>`
-    + EVENTS.map(([eventId]) => `<td class="num">${entry.events[eventId].points}</td>`).join('')
-    + `<td class="num">${entry.total}</td></tr>`
+    + EVENTS.map(([eventId]) => `<td class="num">${entry.events?.[eventId]?.points ?? '-'}</td>`).join('')
+    + `<td class="num">${escapeHtml(entry.total)}</td></tr>`
   ));
   return `<table>${header}${rows.join('')}</table>`;
 }

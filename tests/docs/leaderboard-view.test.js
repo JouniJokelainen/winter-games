@@ -53,3 +53,65 @@ test('renderLeaderboard escapes nicknames', () => {
   const html = renderLeaderboard({ ...BOARD, top: [{ nickname: '<X>', total: 1 }] });
   assert.ok(!html.includes('<X>'));
 });
+
+test('renderLeaderboard escapes numeric totals in top rankings', () => {
+  const html = renderLeaderboard({ version: 1, users: {}, top: [{ nickname: 'JOUNI', total: '<b>' }], eventRecords: {}, recent: [] });
+  assert.ok(html.includes('&lt;b&gt;'));
+  assert.ok(!html.includes('<b>'));
+});
+
+test('renderLeaderboard handles recent entry with missing events', () => {
+  const board = {
+    version: 1,
+    users: {},
+    top: [],
+    eventRecords: {},
+    recent: [{ nickname: 'JOUNI', date: '2026-10-06T12:00:00.000Z', total: 150 }],
+  };
+  const html = renderLeaderboard(board);
+  assert.match(html, /VIIMEISIMMÄT KILPAILUT/);
+  assert.ok(html.includes('-'));
+});
+
+test('renderLeaderboard handles recent entry with missing event', () => {
+  const board = {
+    version: 1,
+    users: {},
+    top: [],
+    eventRecords: {},
+    recent: [{
+      nickname: 'JOUNI',
+      date: '2026-10-06T12:00:00.000Z',
+      total: 150,
+      events: { skiJump: { points: 76 }, slalom: { points: 30 } },
+    }],
+  };
+  const html = renderLeaderboard(board);
+  assert.match(html, /VIIMEISIMMÄT KILPAILUT/);
+  assert.ok(html.includes('-'));
+});
+
+test('renderLeaderboard escapes nickname in eventRecords', () => {
+  const board = {
+    version: 1,
+    users: {},
+    top: [],
+    eventRecords: { skiJump: { nickname: '<X>', points: 76, distance: 198.5 } },
+    recent: [],
+  };
+  const html = renderLeaderboard(board);
+  assert.ok(html.includes('&lt;X&gt;'));
+  assert.ok(!html.includes('<X>'));
+});
+
+test('renderLeaderboard escapes points in eventRecords', () => {
+  const board = {
+    version: 1,
+    users: {},
+    top: [],
+    eventRecords: { skiJump: { nickname: 'JOUNI', points: '<b>', distance: 198.5 } },
+    recent: [],
+  };
+  const html = renderLeaderboard(board);
+  assert.ok(html.includes('&lt;b&gt;'));
+});
