@@ -5,7 +5,7 @@ Replaces the slalom placeholder with a real event. Product rules: `docs/spec.md`
 ## Rules
 
 - Fixed course, always the same: 20 single poles, alternating left/right of the course centerline, then a short pole-free straight (≈3 s) to the finish line.
-- **Passing a pole:** every pole must be passed on the side facing the course centerline. Red poles are passed on their right side, blue poles on their left side; each pole flag shows a small arrow for the passing side. Passing on the wrong side = missed pole.
+- **Passing a pole:** every pole must be passed on its outer side, away from the course centerline (as in real slalom), so the skier has to weave. Red poles stand left of the centerline and are passed on their left side; blue poles stand right of it and are passed on their right side. Each pole flag shows a small arrow for the passing side. Passing on the wrong side = missed pole; a straight run down the middle misses every pole.
 - **Hitting a pole:** knocks it down (stays down for the rest of the run), costs 10 points and slows the skier. Passing side is judged independently: hit + correct side = hit only; hit + wrong side = hit and missed pole.
 - **Disqualification (immediate):** second missed pole, or crossing a course fence. The skier falls, "HYLÄTTY" is shown, and after ≈1 s the run ends.
 - **Timing:** starts when the player presses Space to start, stops when the skier crosses the finish line.
