@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SceneManager } from '../game/engine/sceneManager.js';
 import { createFlow } from '../game/flow.js';
+import { SlalomScene } from '../game/events/slalom/slalomScene.js';
+import { inputForEvent } from './helpers/eventDrivers.js';
 import { fakeInput } from './helpers/fakeInput.js';
 
 function fakeGame() {
@@ -24,11 +26,12 @@ const tick = (game, codes = []) => {
 };
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
-// Drives the current event scene (Space every 10 ticks, no steering) until it hands over to the result screen.
+// Drives the current event scene (per-event driver) until it hands over to the result screen.
 function finishAttempt(game) {
   const eventScene = game.scenes.current;
+  const eventId = eventScene instanceof SlalomScene ? 'slalom' : 'other';
   for (let i = 0; i < 60 * 120 && game.scenes.current === eventScene; i++) {
-    game.scenes.update(1 / 60, fakeInput(i % 10 === 0 ? ['Space'] : []));
+    game.scenes.update(1 / 60, inputForEvent(eventId, eventScene, i));
   }
 }
 

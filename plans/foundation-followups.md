@@ -8,7 +8,6 @@ Deferred findings from the foundation reviews. Each event plan picks up the item
 ## Ski jump plan
 - Round both x and y in `drawText` (camera scrolling gives fractional positions).
 - `skiJumpPoints` returns NaN for an unknown landing: add a guard and tests, plus `LANDING_POINTS` tests.
-- Extend `tests/helpers/fakeInput.js` so "held" (`isDown`) and "newly pressed" (`wasPressed`) can differ, and support press counts.
 
 ## Luge plan
 - Add a luge "faster but fewer points" test for `bestAttempt`.
@@ -16,6 +15,7 @@ Deferred findings from the foundation reviews. Each event plan picks up the item
 
 ## Any time
 - Flow tests: save failure and retry, nickname load failure, resume from pause.
+- Add a fixed-stepper test where clamping leaves a remainder (`createFixedStepper`).
 - Pages: `formatMetric` throws on string values; `formatDate` uses local time. Google Fonts is an external request; decide before public launch.
 - Server: Windows `rename` EPERM/EBUSY retry; 400/413 for malformed URL escapes and oversized bodies.
 - Practice quit keeps the event theme playing; Escape while typing a nickname returns to the title instead of the list.
