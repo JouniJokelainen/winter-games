@@ -24,7 +24,15 @@ const tick = (game, codes = []) => {
 };
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
-test('a full competition with placeholder events posts one result', async () => {
+// Drives the current event scene (Space every 10 ticks, no steering) until it hands over to the result screen.
+function finishAttempt(game) {
+  const eventScene = game.scenes.current;
+  for (let i = 0; i < 60 * 120 && game.scenes.current === eventScene; i++) {
+    game.scenes.update(1 / 60, fakeInput(i % 10 === 0 ? ['Space'] : []));
+  }
+}
+
+test('a full competition posts one result', async () => {
   const game = fakeGame();
   const flow = createFlow(game);
   flow.toTitle();
@@ -34,7 +42,7 @@ test('a full competition with placeholder events posts one result', async () => 
   for (let event = 0; event < 3; event++) {
     tick(game, ['Space']);               // event intro
     for (let attempt = 0; attempt < 3; attempt++) {
-      tick(game, ['Space']);             // placeholder attempt
+      finishAttempt(game);               // event attempt (placeholder or real)
       tick(game, ['Space']);             // attempt result
     }
     tick(game, ['Space']);               // event summary
