@@ -20,7 +20,7 @@
 - Shared rule constants come only from `game/core/rules.js` (`EVENT_IDS`, `MAX_POINTS`, `METRIC_KEY`, `ATTEMPTS_PER_EVENT`, `SKI_JUMP_MAX_DISTANCE = 200`, `TARGET_TIME_SECONDS = 30`, nickname rules: max 10 chars from `A–Z ÄÖÅ 0–9`).
 - Event points floor at 0. All attempts failed → event gives 0 points.
 - Server listens on `127.0.0.1`, port `8080` (env `PORT` overrides).
-- Tests: `npm test` (= `node --test`), test files `tests/**/*.test.js`.
+- Tests: `npm test` (= `node --test tests/`), test files `tests/**/*.test.js`.
 - Commit messages end with a blank line and `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - Creating the GitHub repo / enabling Pages is outward-facing: ask the user before doing it.
 
@@ -96,6 +96,8 @@ An event is registered in `game/events/registry.js` as:
 - `mode` = `'competition' | 'practice'`
 - The scene implements `update(dt, input)` and `render(ctx)` (optionally `enter()`, `exit()`), and calls `onComplete(attempt)` exactly once.
 - `attempt` = `{ valid: boolean, points: number, distance?: number, time?: number, summary: string[] }`. Ski jump sets `distance`, slalom and luge set `time`. `valid: false` = fall / disqualified. `summary` = Finnish uppercase lines for the result screen.
+- `points` is an integer computed with `game/core/scoring.js`. Ski-jump `distance` must be clamped to `SKI_JUMP_MAX_DISTANCE` (200) and be > 0; `time` must be > 0. These are checked by the server's `validateResult`.
+- Use `input.wasPressed` (not `isDown`) for start, takeoff, landing and push actions. Use only `dt` for timing (never `performance.now()`). Hold a ~1 s finish state before calling `onComplete`.
 - Flow sets `scene.onPauseQuit`; Esc opens the pause menu for any scene that has it.
 
 ---
@@ -127,7 +129,7 @@ git init -b main
   "type": "module",
   "scripts": {
     "start": "node server/server.js",
-    "test": "node --test"
+    "test": "node --test tests/"
   },
   "engines": {
     "node": ">=20"
