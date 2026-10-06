@@ -17,7 +17,11 @@ function fakeGame() {
   };
 }
 
-const tick = (game, codes = []) => game.scenes.update(1 / 60, fakeInput(codes));
+// Advances past the InfoScene input lockout before applying the key press.
+const tick = (game, codes = []) => {
+  game.scenes.update(0.7, fakeInput([]));
+  game.scenes.update(1 / 60, fakeInput(codes));
+};
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
 test('a full competition with placeholder events posts one result', async () => {
@@ -65,4 +69,20 @@ test('escape is ignored on scenes without a pause target', () => {
   const flow = createFlow(game);
   flow.toTitle();
   assert.equal(flow.handleGlobalKeys(fakeInput(['Escape'])), false);
+});
+
+test('escape opens the pause menu on competition info scenes', async () => {
+  const game = fakeGame();
+  const flow = createFlow(game);
+  flow.toTitle();
+  tick(game, ['Space']);                 // KILPAILU
+  await flush();
+  tick(game, ['Space']);                 // pick AKU -> event intro
+  assert.equal(game.scenes.current.constructor.name, 'InfoScene');
+  assert.equal(flow.handleGlobalKeys(fakeInput(['Escape'])), true);
+  assert.equal(game.scenes.current.constructor.name, 'PauseScene');
+  tick(game, ['ArrowDown']);
+  tick(game, ['ArrowDown']);
+  tick(game, ['Space']);                 // LOPETA
+  assert.equal(game.scenes.current.constructor.name, 'TitleScene');
 });

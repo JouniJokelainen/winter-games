@@ -3,12 +3,13 @@ import { drawText } from '../engine/font.js';
 import { PALETTE } from '../engine/palette.js';
 
 export class InfoScene {
-  constructor({ game, title, lines, prompt = 'VÄLILYÖNTI = JATKA', onContinue }) {
+  constructor({ game, title, lines, prompt = 'VÄLILYÖNTI = JATKA', onContinue, minShowSeconds = 0.6 }) {
     this.game = game;
     this.title = title;
     this.lines = lines;
     this.prompt = prompt;
     this.onContinue = onContinue;
+    this.minShowSeconds = minShowSeconds;
     this.time = 0;
     this.snow = new Snowfall();
   }
@@ -16,6 +17,7 @@ export class InfoScene {
   update(dt, input) {
     this.time += dt;
     this.snow.update(dt);
+    if (this.time < this.minShowSeconds) return;
     if (input.wasPressed('Space') || input.wasPressed('Enter')) {
       this.game.audio.playSfx('confirm');
       this.onContinue();

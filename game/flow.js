@@ -29,11 +29,16 @@ export function createFlow(game) {
     showCompetitionIntro(new Competition(nickname));
   }
 
+  function competitionInfo(options) {
+    const info = new InfoScene({ game, ...options });
+    info.onPauseQuit = toTitle;
+    return info;
+  }
+
   function showCompetitionIntro(competition) {
     const event = EVENTS[competition.currentEventId];
     game.audio.playSong(EVENT_THEME);
-    scenes.replace(new InfoScene({
-      game,
+    scenes.replace(competitionInfo({
       title: event.name,
       lines: [
         `LAJI ${competition.eventIndex + 1}/${competition.eventIds.length}`,
@@ -54,8 +59,7 @@ export function createFlow(game) {
       attemptNumber,
       onComplete: (attempt) => {
         competition.recordAttempt(attempt);
-        scenes.replace(new InfoScene({
-          game,
+        scenes.replace(competitionInfo({
           title: `YRITYS ${attemptNumber}/${ATTEMPTS_PER_EVENT}`,
           lines: attempt.summary,
           onContinue: () => (competition.isEventComplete()
@@ -71,8 +75,7 @@ export function createFlow(game) {
   function showEventSummary(competition) {
     const eventId = competition.currentEventId;
     const result = competition.eventResult(eventId);
-    scenes.replace(new InfoScene({
-      game,
+    scenes.replace(competitionInfo({
       title: EVENTS[eventId].name,
       lines: [
         'PARAS SUORITUS',
