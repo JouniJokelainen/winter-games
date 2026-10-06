@@ -32,7 +32,8 @@ export function buildAttempt(state) {
     const points = slalomPoints({ time, hits: state.hits, missed: state.missed });
     return { valid: true, points, time, summary: [...lines, `PISTEET ${points}`] };
   }
-  return { valid: false, points: 0, time, summary: [...lines, 'HYLÄTTY', DISQUALIFICATION_LABEL[state.reason]] };
+  const reason = DISQUALIFICATION_LABEL[state.reason];
+  return { valid: false, points: 0, time, summary: [...lines, 'HYLÄTTY', ...(reason ? [reason] : [])] };
 }
 
 export class SlalomScene {
@@ -60,7 +61,7 @@ export class SlalomScene {
         pushes: input.pressCount('Space'),
       };
       stepSlalom(state, controls, dt);
-      if (wasRunning && controls.pushes > 0) this.game.audio.playSfx('push');
+      if (wasRunning && controls.pushes > 0 && state.phase === 'running') this.game.audio.playSfx('push');
       for (const event of state.events) {
         for (const sound of EVENT_SOUNDS[event.type] ?? []) this.game.audio.playSfx(sound);
       }

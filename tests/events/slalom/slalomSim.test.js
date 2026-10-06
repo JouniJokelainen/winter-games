@@ -48,7 +48,8 @@ test('pushes accelerate up to the speed cap', () => {
 test('without pushes speed settles near the gravity-only limit', () => {
   const state = running({ speed: 200, poles: [], course: { ...TINY_COURSE, poles: [], finishY: 1e9 } });
   for (let i = 0; i < 60 * 20; i++) stepSlalom(state, NONE, DT);
-  assert.ok(Math.abs(state.speed - 130) < 2, `speed ${state.speed}`);
+  const limit = Math.sqrt(SLALOM_CONFIG.gravity / SLALOM_CONFIG.drag);
+  assert.ok(Math.abs(state.speed - limit) < 2, `speed ${state.speed}`);
 });
 
 test('steering right turns right and costs speed', () => {
@@ -96,6 +97,14 @@ test('passing on the wrong side counts as missed but the run continues', () => {
   assert.equal(state.poles[0].result, 'missed');
   assert.equal(state.missed, 1);
   assert.equal(state.phase, 'running');
+});
+
+test('the pole side is judged where the path crosses the pole line, not after the step', () => {
+  const state = running({ x: 139.5, y: 99.8, angle: 1, speed: 60 });
+  stepSlalom(state, NONE, DT);
+  assert.ok(state.x > 140, `post-step x ${state.x}`);
+  assert.equal(state.poles[0].result, 'passed');
+  assert.equal(state.missed, 0);
 });
 
 test('a second missed pole disqualifies immediately', () => {

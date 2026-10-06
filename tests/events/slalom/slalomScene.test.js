@@ -39,6 +39,23 @@ test('buildAttempt marks a disqualified run invalid with the reason', () => {
   assert.equal(missed.summary.at(-1), '2 OHITETTUA KEPPIÄ');
 });
 
+test('buildAttempt omits the reason line for an unknown disqualification reason', () => {
+  const out = buildAttempt({ ...createSlalomState(COURSE), phase: 'disqualified', reason: 'mystery', time: 4.5 });
+  assert.equal(out.valid, false);
+  assert.deepEqual(out.summary.slice(-1), ['HYLÄTTY']);
+  assert.ok(out.summary.every((line) => !line.includes('undefined')));
+});
+
+test('no push sound when the pushing step disqualifies the run', () => {
+  const game = recordingGame();
+  const scene = new SlalomScene({ game, mode: 'practice', attemptNumber: 1, onComplete() {} });
+  Object.assign(scene.state, { phase: 'running', speed: 100, x: COURSE.fenceLeftX + 0.1 });
+  scene.state.angle = -0.5;
+  scene.update(DT, fakeInput(['Space'], [], { held: ['ArrowLeft'] }));
+  assert.equal(scene.state.phase, 'disqualified');
+  assert.ok(!game.sounds.includes('push'));
+});
+
 test('an excellent bot run completes once, after the finish hold, with a valid attempt', () => {
   const game = recordingGame();
   const attempts = [];

@@ -31,6 +31,8 @@ export function createSlalomState(course) {
     poles: course.poles.map(() => ({ hit: false, result: null })),
     nextPole: 0,
     reason: null,
+    prevX: course.startX,
+    prevY: course.startY,
     events: [],
   };
 }
@@ -54,6 +56,8 @@ function steer(state, controls, dt) {
 
 function move(state, controls, dt) {
   const C = SLALOM_CONFIG;
+  state.prevX = state.x;
+  state.prevY = state.y;
   const accel = C.gravity
     - C.drag * state.speed * state.speed
     - C.turnDrag * Math.abs(Math.sin(state.angle)) * state.speed;
@@ -76,13 +80,22 @@ function checkHits(state) {
   });
 }
 
+// x where this step's path crosses the horizontal line y (falls back to the current x).
+function crossingXAt(state, y) {
+  const dy = state.y - state.prevY;
+  if (!(dy > 0)) return state.x;
+  const fraction = clamp((y - state.prevY) / dy, 0, 1);
+  return state.prevX + (state.x - state.prevX) * fraction;
+}
+
 function checkPassedPoles(state) {
   const { poles } = state.course;
   while (state.nextPole < poles.length && state.y >= poles[state.nextPole].y) {
     const index = state.nextPole;
     state.nextPole += 1;
     const pole = poles[index];
-    const correctSide = pole.side === 'left' ? state.x < pole.x : state.x > pole.x;
+    const crossingX = crossingXAt(state, pole.y);
+    const correctSide = pole.side === 'left' ? crossingX < pole.x : crossingX > pole.x;
     state.poles[index].result = correctSide ? 'passed' : 'missed';
     state.events.push({ type: correctSide ? 'passed' : 'missed', pole: index });
     if (!correctSide) {
