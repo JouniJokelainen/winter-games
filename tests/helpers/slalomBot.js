@@ -2,9 +2,9 @@ import { createSlalomState, SLALOM_CONFIG, stepSlalom } from '../../game/events/
 import { fakeInput } from './fakeInput.js';
 
 export const BOTS = {
-  excellent: { margin: 9, pushEvery: 5, pushAngle: 0.5 },
-  average: { margin: 12, pushEvery: 8, pushAngle: 0.5 },
-  reckless: { margin: 8, pushEvery: 4, pushAngle: 1.1 },
+  excellent: { margin: 9, pushEvery: 8, pushAngle: 0.5 },
+  average: { margin: 12, pushEvery: 11, pushAngle: 0.5 },
+  reckless: { margin: 8, pushEvery: 6, pushAngle: 1.1 },
 };
 
 const STEER_DEADBAND = 0.03;

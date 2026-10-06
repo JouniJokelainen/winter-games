@@ -3,7 +3,7 @@ export const SLALOM_CONFIG = {
   startSpeed: 40,
   gravity: 60,
   drag: 60 / (130 * 130), // gravity-only speed settles at 130 px/s
-  pushImpulse: 12,
+  pushImpulse: 20,
   maxSpeed: 220,
   maxAngle: Math.PI / 3,
   turnRate: 3.0,

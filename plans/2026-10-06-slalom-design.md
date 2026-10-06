@@ -16,7 +16,7 @@ Replaces the slalom placeholder with a real event. Product rules: `docs/spec.md`
 ## Physics (starting values, tuned by the bot test)
 
 - World units are pixels; y grows downhill. Course ≈200 px wide between fences, ≈5000 px long; poles at y ≈ 300–4400, finish line at y ≈ 4900.
-- **Speed:** gravity accelerates; drag limits gravity-only speed to ≈130 px/s. Each Space press adds ≈+12 px/s; hard cap ≈220 px/s. Display km/h = px/s × 0.35 (≈77 km/h at the cap).
+- **Speed:** gravity accelerates; drag limits gravity-only speed to ≈130 px/s. Each Space press adds ≈+20 px/s; hard cap ≈220 px/s. Display km/h = px/s × 0.35 (≈77 km/h at the cap).
 - **Steering:** ski angle θ in ±60° from straight downhill; velocity follows θ. Arrow keys rotate θ; turn rate drops with speed (≈half at the cap), so a too-fast skier cannot turn behind the next pole. On release θ returns toward 0. Speed loss proportional to |sin θ|.
 - **Hit:** within ≈4 px of a pole → speed × 0.6, pole knocked down, hits + 1.
 - **Pole check:** when the skier crosses a pole's y, compare x to the pole's x against the required side.

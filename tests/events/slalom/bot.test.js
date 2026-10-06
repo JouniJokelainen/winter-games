@@ -22,7 +22,7 @@ test('an average run takes 33-36 seconds', () => {
 
 test('too much speed makes poles impossible to round', () => {
   const state = runBot(COURSE, BOTS.reckless);
-  assert.ok(state.phase === 'disqualified' || state.missed > 0, `${state.phase} missed ${state.missed}`);
+  assert.equal(state.phase, 'disqualified', `${state.phase} missed ${state.missed}`);
 });
 
 test('a straight run without steering is disqualified for missed poles', () => {
