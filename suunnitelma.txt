@@ -1,0 +1,116 @@
+Winter Games
+
+Retro ulkoasua(80-90 luvuilta) tavoitteleva talviurheilupeli.
+Peliin voi tehdä oman käyttäjän jolle pisteet tallentuvat.
+Peli sisältää 3 alipeliä.
+Koko pelin voittaa se joka saa eniten pisteitä alipeleistä.
+Kontrollit näppäimistöltä välilyönnillä ja nuolinäppäimillä.
+
+Alipelit
+1.mäkihyppy
+2.pujottelu
+3.ohjaskelkkailu
+
+Mäkihyppy
+Pelin idea:saada mahdollisimman pitkä hyppy onnistuneella alastulolla. Optimaalinen hypyn pituus on 200 metriä.
+
+Pelin toiminnot: 
+- Pelaaja lähtee laskemaan mäkeä alas välilyönti painikkeella.
+- Lähtöön vaikuttaa tuuli jota kuvataan näytön oikeassa yläkulmassa olevalla tuuli viirillä. Mitä enemmän viiri on vaakasennossa sitä kovempi myötätuuli. Myötätuuli nopeuttaa pelihahmon lasku vauhtia mäessä. Kovempi vauhti parantaa hypyn pituutta mutta samalla vaikeuttaa ponnistamista hyppyrin nokalla.
+- Pelaaja ponnistaa välilyönti painikkeella hyppyrin nokalta ja koittaa saada ponnistuksen ajoitettua aivan hyppyri nokalle. Tällöin ponnistus on optimaalinen ja vauhti hyvä.
+- Jos pelaaja ei ponnista ollenkaan hypystä tulee lyhyt ja vauhti ei niin hyvä kuin kuin optimaalisessa ponnistuksessa.
+- Molemmissa edellisissä tapauksissa pelihahmo lähtee lentämään. Pelaaja voi säädellä lentoasentoa nuoli oikealle ja nuoli vasemalle painikkeella. Nuoli vasemmalle kääntää pelihahmoa enemmän pystyyn ja nuoli oikealle enemmän vaakasuoraan. Optimaalinen pelihahmon kulma on 45 astetta jolloin hyppy kantaa pisimmälle.
+- Jos pelaajan kääntää pelihahmon liian pystyyn tai liian vaakaan vauhti hidastuu
+- Jos pelaaja ponnistaa liian myöhään hyppyrin  nokan jälkeen hyppy epänonnistuu ja pelihahmo kaatuu alastulorinteeseen.
+- Pelaajan täytyy suorittaa onnistunut alastulo lennon jälkeen painamalla välilyöntinäppäintä kun pelihahmo laskeutuu alastulo rinteenseen. Painamatta jättäminen ja liian myöhäinen painaminen aiheuttaa kaatumisen. Liian aikainen painaminen huonon alastulon.
+
+- Pelaaja saa tuomari pisteitä hypyn pituudesta ja onnistuneesta alastulosta:
+A) optimaalinen hyppy joka on 200 metriä antaa 60 pistettä
+B) jokainen metri alle 200 metriä vähentää pisteitä 2 pistettä, esim. 199 metrin hyppy antaa 58 pistettä.
+C) optimaalinen alastulo antaa 20 pistettä
+D) huono alastulo antaa 5 pistettä
+E) kaatuminen ei anna pisteteitä pituudesta eikä alastulosta
+F) jos pelaaja ei kaadu lasketään pituuspisteet ja alastulosta saadut pisteet yhteen ja näin saadaan hypyn kokonaispisteet.
+
+- Pelaajalla voi hypätä 3 kertaa ja voimaan jäävät parhaan hypyn pisteet.
+
+Pelin kontrollit: välilyönti = liikeelelle lähtö ja alastulo, lennon kulman säätö nuoli oikealle ja nuoli vasemmalle.
+Pelaajan näkökulma: sivulta päin kuvattuna pelihahmosta katsoen. Seuraa horisontaalisesti pelihahmoa
+
+Pelissä näkyviä asiota:
+- Varsinaisessa pelissä vähintään näkyviä asiaoita:
+Pelihahmo, hyppymäki, alastulorinne, tuuliviiri, pelihahmon nopeus rinteessä ja lennossa, pelaajan tuomari pisteet hypyn jälkeen,
+- talvinen maisema taustalla katsojineen joka käyttää parallax scrolling ominaisuutta
+- mäki, pelihahma ja alastulo rinne edustalla
+- 3 hypyn jälkeen tieto parhaasta hypystä ja siitä saadut pisteet.
+
+3 hypyn jälkeen pelaajan pisteet tallennetaan ja siirrytään seuraavaan lajiin joka on pujottelu.
+
+Pujottelu
+Pelin idea:pujotella mäki alas kepit kiertäen. Pelaaja koittaa saada pelihahmo mahdollisimman nopeasti maaliin ilman että törmää kierrettäviin keppeihin tai että ajatuu ulos radalta.
+Rata on aina samanlainen ja kepit samoissa kohdissa. Keppejä on aina sama määrä eli 20 kappaletta.
+Voimaan jää pelaajan nopein lasku. Nopeimmasta laskusta 60 pistettä. 
+
+Pelin toiminnot:
+- Pelaaja lähtee laskemaan mäkeä alas välilyönti painikkeella.
+- Pelihahmoa ohjataan nuoli oikealla ja nuoli vasemmalle painikkeilla
+- Kääntyminen hidastaa pelihahmon vauhtia. 
+- Keppiin osuminen hidastaa pelihahmon vauhtia.
+- Pelaaja voi kiihdyttää vauhtia välilyönti painikketta naputtamalla. Liian kova vauhti vaikeuttaa keppien kiertämistä.
+- Maali on mäen alarinteessä ja ennen maalia on lyhyt kepitön jakso jossa pelaaja voi kiihdyttää maksimaaliseen vauhtiin välilyönnillä
+- Kaksi kiertämäntöntä keppiä aiheuttaa laskun hylkääämisen
+- Pelihahmo ajautuminen ohi rinteestä aihettaa laskun hylkäämsen
+
+- Pelaajalla on 3 yritystä laskea mäki. Voimaan jää lasku joka ei ole hylätty ja jossa pelaaja selvitti radan nopeiten.
+- Optimaalinen lasku on nopea ja jossa pelaaja ei ole kaatanut yhtään keppiä
+- Radan tavoite aika on 30 sekuntia. Radan läpäiseminen tavoiteajassa antaa 60 pistetä. Rata on suunniteltava tämä tavoite ajan mukaan. 
+- Jokainen sekunti yli 30 sekuntia vähentää 5 pistettä
+- Jokainen törmäys keppiin vähentää 10 pistettä. 
+
+Pelin kontrollit: välilyönti = liikkeelle lähtö ja vauhdin kiihdyttäminen, nuoli oikealle ja nuoli vasemalle = pelihahmon kääntäminen rinteessä
+
+Pelaajan näkökulma: Edestä päin kuvattuna pelihahmosta katsoen. Seuraa pelihahmoon nähden edestä vertikaalisesti pelihahmoa
+
+Pelissä näkyviä asiota:
+- Lähtöpaikka, pujottelu rinne, pelihahmo, pelihahmon nopeus rinteessä
+- Talvinen maisema ja katsojat
+- Kierretetyt kepit ja kiertämättömät kepit
+- Pelaajan vauhti
+- 3 laskun jälkeen paras lasku ja aika jossa pelaaja laski radan
+
+3 laskun jälkeen pelaajan pisteet tallennetaan ja lisätään edellisen lajin pisteisiin jonka jälkeen siirrytään seuraavaan lajiin joka on ohjaskelkkailu
+
+Ohjaskelkkailu
+Pelin idea:laskea kelkka rata kelkalla mahdollisimman nopeasti ajamatta ulos radalta.
+
+Pelin toiminnot:
+- Pelaaja lähtee liikkeelle välilyönti painikkeella
+- Pelaaja työntää hetken (5 sekuntia) kelkkaa ennen varsinaista kelkkamäkeä painelemalla välilyöntiä. Välilyönnin nopea napsuttaminen kiihdyttää vauhtia.
+- Pelihahmo hyppää automaattisesti kelkan kyytiin ennen varsinaista kelkkamäkeä rataan piirretyn punaisen viivan kohdalla.
+- Hyvä työntäminen siirtyy kelkkamäkeen kelkan hyvänä vauhtina.
+- Pelaaja ohjaa kelkaa mäessä nuoli oikealle ja nuoli vasemmalle
+- Kelkan ohjaaminen käännöksessä radan ulkolaidalle kiihdyttää kelkan vauhtia.
+- Kelkan ohjaaminen käännökseesä radan sisälaidalle hidastaa vauhtia
+- Kelkan ohjaaminen käännöksessä radan keskelle säilyttää vauhdin ennallaan.
+- Pelaaja voi jarruttaa nuoli näppäimellä alaspain.
+- Liian kova vauhti aiheuttaa kelkan suistumisen radalta.
+- Radan tavoite aika on 30 sekuntia. Radan läpäiseminen tavoiteajassa antaa 60 pistetä. Rata on suunniteltava tämä tavoite ajan mukaan.
+- Jokainen sekunti yli 30 sekuntia vähentää 5 pistettä.
+- Suistuminen radalta aihettaa hylätyn suorituksen.
+
+Pelin kontrollit: välilyönti = liikeelle lähtö, välilyönnin nopea painelu = vauhdin kiihdyttäminen ennen varsinaista kelkkamäkeä
+Nuoli oikealle ja vasemmalle = kelkan ohjaaminen kelkkamäessä
+Nuoli alaspäin = kelkan vauhdin jarruttaminen kelkkamäessä
+
+Pelaajan näkökulma: takaa päin kuvattuna pelihahmosta katsoen. Seuraa pelihahmoon nähden takaa vertikaalisesti pelihahmoa
+
+Pelissä näkyviä asiota:
+- Lähtöpaikkapaikka ja sen jälkeinen kiihdytys alua, kelkka mäki, pelihahmo kelkkoinen, pelihahmon nopeus rinteessä
+- Talvinen maisema ja katsojat
+- Pelaajan vauhti
+- 3 laskun jälkeen paras lasku ja aika jossa pelaaja laski radan
+
+3 laskun jälkeen pelaajan pisteet tallennetaan ja lisätään edellisen lajin pisteisisin jonka jälkeen siirrytään loppunäkymään jossa näkyvät pelaajan yhteispisteet 3 lajin jälkeen.
+
+
+
