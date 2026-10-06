@@ -49,7 +49,7 @@ function renderRecent(recent) {
   const header = '<tr><th>PVM</th><th>PELAAJA</th><th>MÄKI</th><th>PUJO</th><th>KELKKA</th><th>YHT</th></tr>';
   const rows = recent.map((entry) => (
     `<tr><td>${formatDate(entry.date)}</td><td>${escapeHtml(entry.nickname)}</td>`
-    + EVENTS.map(([eventId]) => `<td class="num">${entry.events?.[eventId]?.points ?? '-'}</td>`).join('')
+    + EVENTS.map(([eventId]) => `<td class="num">${escapeHtml(entry.events?.[eventId]?.points ?? '-')}</td>`).join('')
     + `<td class="num">${escapeHtml(entry.total)}</td></tr>`
   ));
   return `<table>${header}${rows.join('')}</table>`;

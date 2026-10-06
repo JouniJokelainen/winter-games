@@ -115,3 +115,21 @@ test('renderLeaderboard escapes points in eventRecords', () => {
   const html = renderLeaderboard(board);
   assert.ok(html.includes('&lt;b&gt;'));
 });
+
+test('renderLeaderboard escapes per-event points in recent results', () => {
+  const board = {
+    version: 1,
+    users: {},
+    top: [],
+    eventRecords: {},
+    recent: [{
+      nickname: 'JOUNI',
+      date: '2026-10-06T12:00:00.000Z',
+      total: 1,
+      events: { skiJump: { points: '<i>' } },
+    }],
+  };
+  const html = renderLeaderboard(board);
+  assert.ok(html.includes('&lt;i&gt;'));
+  assert.ok(!html.includes('<i>'));
+});

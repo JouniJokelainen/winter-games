@@ -48,6 +48,7 @@ export class Sequencer {
   // Schedules whole loops ahead of time; stop() disconnects the output so queued notes go silent.
   schedule() {
     const { ctx } = this.audio;
+    if (this.nextLoopTime < ctx.currentTime) this.nextLoopTime = ctx.currentTime + 0.05;
     while (this.nextLoopTime < ctx.currentTime + LOOKAHEAD_SECONDS) {
       for (const track of this.tracks) {
         for (const note of track.notes) {

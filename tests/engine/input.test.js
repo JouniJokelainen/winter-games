@@ -51,3 +51,10 @@ test('reset clears held keys', () => {
   input.reset();
   assert.equal(input.isDown('ArrowRight'), false);
 });
+
+test('endFrame clears typed characters that were not taken', () => {
+  const input = new Input();
+  input.onKeyDown(key('KeyA', 'a'));
+  input.endFrame();
+  assert.deepEqual(input.takeTyped(), []);
+});

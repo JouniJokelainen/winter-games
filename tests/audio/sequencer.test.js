@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { noteToFreq, parsePattern } from '../../game/audio/sequencer.js';
+import { noteToFreq, parsePattern, Sequencer } from '../../game/audio/sequencer.js';
 
 test('noteToFreq uses A4 = 440 Hz equal temperament', () => {
   assert.equal(noteToFreq('A4'), 440);
@@ -23,4 +23,16 @@ test('parsePattern handles notes, rests and holds', () => {
 test('parsePattern rejects a hold without a note', () => {
   assert.throws(() => parsePattern('. -'), /hold without note/);
   assert.throws(() => parsePattern('- C4'), /hold without note/);
+});
+
+test('schedule resyncs after the clock ran ahead of the queue', () => {
+  const ctx = { currentTime: 100 };
+  const audio = { ctx, tone() {} };
+  const sequencer = new Sequencer(audio, { bpm: 120, stepsPerBeat: 2, channels: [{ wave: 'square', volume: 0.1, pattern: 'C4 - . D4' }] });
+  sequencer.nextLoopTime = 1;
+  let tones = 0;
+  audio.tone = () => { tones++; };
+  sequencer.schedule();
+  assert.ok(sequencer.nextLoopTime > 100);
+  assert.ok(tones < 10);
 });

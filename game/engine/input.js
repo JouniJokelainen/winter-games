@@ -44,5 +44,6 @@ export class Input {
   // Call once after every fixed update tick so a press is seen by exactly one tick.
   endFrame() {
     this.pressed.clear();
+    this.typed = [];
   }
 }
