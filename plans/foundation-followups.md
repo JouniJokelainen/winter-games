@@ -2,10 +2,8 @@
 
 Deferred findings from the foundation reviews. Each event plan picks up the items it needs.
 
-## Slalom plan (first space-mashing event, before luge)
-- `Input.pressed` is a Set: repeated presses of the same key within one fixed tick collapse into one. Change to a count map and add `pressCount(code)`; keep `wasPressed`. Slalom and luge count presses.
-- Guard `event.key` in `Input.onKeyDown`; add a stepper test for clamp-with-remainder.
-- Add a slalom time tie-break test to `tests/core/scoring.test.js`.
+## Slalom plan
+- Done in `plans/2026-10-06-slalom.md`: per-tick press counting (`Input#pressCount`), `event.key` guard, `fakeInput` held/pressed/counts, slalom time tie-break test.
 
 ## Ski jump plan
 - Round both x and y in `drawText` (camera scrolling gives fractional positions).

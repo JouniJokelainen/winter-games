@@ -3,7 +3,7 @@ const GAME_KEYS = new Set(['Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'Arrow
 export class Input {
   constructor(target = null) {
     this.down = new Set();
-    this.pressed = new Set();
+    this.pressed = new Map();
     this.typed = [];
     if (target) {
       target.addEventListener('keydown', (event) => this.onKeyDown(event));
@@ -14,9 +14,9 @@ export class Input {
 
   onKeyDown(event) {
     if (GAME_KEYS.has(event.code)) event.preventDefault();
-    if (!event.repeat) this.pressed.add(event.code);
+    if (!event.repeat) this.pressed.set(event.code, this.pressCount(event.code) + 1);
     this.down.add(event.code);
-    if (event.key.length === 1) this.typed.push(event.key);
+    if (typeof event.key === 'string' && event.key.length === 1) this.typed.push(event.key);
   }
 
   onKeyUp(event) {
@@ -33,6 +33,11 @@ export class Input {
 
   wasPressed(code) {
     return this.pressed.has(code);
+  }
+
+  // Number of new presses since the last endFrame(); fast tapping can exceed one per tick.
+  pressCount(code) {
+    return this.pressed.get(code) ?? 0;
   }
 
   takeTyped() {

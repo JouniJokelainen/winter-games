@@ -73,3 +73,11 @@ test('eventResult returns points and metric of the best attempt or zero with nul
   assert.deepEqual(eventResult('skiJump', [{ valid: true, points: 62, distance: 196.5 }]), { points: 62, distance: 196.5 });
   assert.deepEqual(eventResult('slalom', []), { points: 0, time: null });
 });
+
+test('bestAttempt slalom breaks equal points by faster time', () => {
+  const attempts = [
+    { valid: true, points: 50, time: 31.2 },
+    { valid: true, points: 50, time: 30.9 },
+  ];
+  assert.equal(bestAttempt('slalom', attempts), attempts[1]);
+});

@@ -58,3 +58,33 @@ test('endFrame clears typed characters that were not taken', () => {
   input.endFrame();
   assert.deepEqual(input.takeTyped(), []);
 });
+
+test('pressCount counts every new press within one tick', () => {
+  const input = new Input();
+  input.onKeyDown(key('Space', ' '));
+  input.onKeyUp(key('Space'));
+  input.onKeyDown(key('Space', ' '));
+  input.onKeyUp(key('Space'));
+  input.onKeyDown(key('Space', ' '));
+  assert.equal(input.pressCount('Space'), 3);
+  assert.equal(input.wasPressed('Space'), true);
+  assert.equal(input.pressCount('ArrowLeft'), 0);
+  input.endFrame();
+  assert.equal(input.pressCount('Space'), 0);
+  assert.equal(input.wasPressed('Space'), false);
+});
+
+test('auto-repeat does not add to pressCount', () => {
+  const input = new Input();
+  input.onKeyDown(key('Space', ' '));
+  input.onKeyDown(key('Space', ' ', true));
+  input.onKeyDown(key('Space', ' ', true));
+  assert.equal(input.pressCount('Space'), 1);
+});
+
+test('keydown without a key string does not throw', () => {
+  const input = new Input();
+  input.onKeyDown({ code: 'Space', repeat: false, preventDefault() {} });
+  assert.equal(input.pressCount('Space'), 1);
+  assert.deepEqual(input.takeTyped(), []);
+});
