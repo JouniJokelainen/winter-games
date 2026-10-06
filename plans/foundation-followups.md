@@ -13,6 +13,9 @@ Deferred findings from the foundation reviews. Each event plan picks up the item
 - Add a luge "faster but fewer points" test for `bestAttempt`.
 - Consider `pause()`/`resume()` hooks on event scenes for continuous sounds (scraping) while the pause menu is open.
 
+## Ski jump and luge plans (both)
+- Add the event's bot driver to `tests/helpers/eventDrivers.js` (`inputForEvent`) and extend `finishAttempt` in `tests/flow.test.js`, which currently detects only `SlalomScene`.
+
 ## Any time
 - Flow tests: save failure and retry, nickname load failure, resume from pause.
 - Add a fixed-stepper test where clamping leaves a remainder (`createFixedStepper`).
