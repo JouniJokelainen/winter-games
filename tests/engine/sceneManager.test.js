@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { RESOLUTION_SCALE } from '../../game/engine/constants.js';
 import { SceneManager } from '../../game/engine/sceneManager.js';
 
 function scene(name, log) {
@@ -47,4 +48,14 @@ test('scenes without enter/exit hooks are fine', () => {
   manager.replace({ update() {}, render() {} });
   manager.pop();
   assert.equal(manager.current, null);
+});
+
+test('render scales low-resolution scenes and draws high-resolution scenes 1:1', () => {
+  const transforms = [];
+  const ctx = { setTransform: (...args) => transforms.push(args) };
+  const manager = new SceneManager();
+  manager.push({ update() {}, render() {} });
+  manager.push({ highResolution: true, update() {}, render() {} });
+  manager.render(ctx);
+  assert.deepEqual(transforms, [[RESOLUTION_SCALE, 0, 0, RESOLUTION_SCALE, 0, 0], [1, 0, 0, 1, 0, 0]]);
 });

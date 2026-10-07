@@ -1,3 +1,5 @@
+import { RESOLUTION_SCALE } from './constants.js';
+
 export class SceneManager {
   constructor() {
     this.stack = [];
@@ -27,7 +29,12 @@ export class SceneManager {
     this.current?.update(dt, input);
   }
 
+  // Low-resolution scenes draw in 320×256 logical pixels scaled up; high-resolution scenes draw 1:1.
   render(ctx) {
-    for (const scene of this.stack) scene.render(ctx);
+    for (const scene of this.stack) {
+      const scale = scene.highResolution ? 1 : RESOLUTION_SCALE;
+      ctx.setTransform?.(scale, 0, 0, scale, 0, 0);
+      scene.render(ctx);
+    }
   }
 }
