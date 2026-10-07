@@ -83,7 +83,7 @@ Retrohenkinen (Amiga/VGA-tyyli) talviurheilupeli, jossa on kolme lajia: mäkihyp
 - **Kuvakulma:** edestä. Hahmo laskee kohti katsojaa ruudun yläkolmanneksessa, ja rata vierii ylöspäin.
 - **Rata:**
   - Rata on aina sama.
-  - Siinä on 20 yksittäistä keppiä, jotka kierretään vuorotellen vasemmalta ja oikealta (punaiset ja siniset kepit).
+  - Siinä on 23 yksittäistä keppiä, jotka kierretään vuorotellen vasemmalta ja oikealta (punaiset ja siniset kepit).
   - Ennen maalia on lyhyt kepitön kiihdytysosuus.
 - **Ohjaus:**
   - Välilyönnillä lähdetään liikkeelle.
