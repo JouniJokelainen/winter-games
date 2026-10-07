@@ -27,7 +27,7 @@ Moves the slalom event to the realistic muted style of the ski jump (`plans/2026
 - **Skier:** `drawSlalomSkier` with a soft `shadow` ellipse under the skis.
 - **Snowfall:** `drawSnowfall(ctx, time)`.
 - **HUD (as in the ski jump):** a 44 px `night` bar, text at scale 2: `AIKA` and speed with a speed bar (`darkGrey` track, `paper` fill) on the left, the attempt label in the middle (`skyLight`), `OSUMAT` and `OHITETUT x/2` on the right (`orange` when above 0).
-- **Banners:** `VÄLILYÖNTI = LÄHTÖ` (blinking, scale 2, `night`), `MAALI!` (scale 4, `paper` with a `slate` shadow), `HYLÄTTY` (scale 4, `red` with a `black` shadow).
+- **Banners:** `VÄLILYÖNTI = LÄHTÖ` (blinking, scale 2, `night`), `MAALI!` (scale 4, `guide` with a `night` shadow), `HYLÄTTY` (scale 4, `red` with a `black` shadow).
 
 ## Testing
 

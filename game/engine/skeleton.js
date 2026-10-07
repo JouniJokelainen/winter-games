@@ -36,8 +36,6 @@ export function shaded(light, dark, split = 0.35) {
   return (across) => (across > split ? dark : light);
 }
 
-// ---- styles -----------------------------------------------------------------------------------
-
 export function transform(x, y, angle, [lx, ly]) {
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);

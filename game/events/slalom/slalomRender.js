@@ -221,7 +221,7 @@ function drawBanner(ctx, state, time) {
   if (state.phase === 'ready') {
     drawBlinking(ctx, 'VÄLILYÖNTI = LÄHTÖ', CANVAS_WIDTH / 2, 260, time, { scale: TEXT_SCALE, color: PALETTE.night });
   } else if (state.phase === 'finished') {
-    drawText(ctx, 'MAALI!', CANVAS_WIDTH / 2, 240, { align: 'center', scale: 4, color: PALETTE.paper, shadow: PALETTE.slate });
+    drawText(ctx, 'MAALI!', CANVAS_WIDTH / 2, 240, { align: 'center', scale: 4, color: PALETTE.guide, shadow: PALETTE.night });
   } else if (state.phase === 'disqualified') {
     drawText(ctx, 'HYLÄTTY', CANVAS_WIDTH / 2, 240, { align: 'center', scale: 4, color: PALETTE.red, shadow: PALETTE.black });
   }

@@ -61,3 +61,12 @@ test('the start hut and the finish banner appear at their ends of the course', (
   assert.ok(render(ready).some((r) => r.color === PALETTE.wood3 && r.w === 84), 'start hut wall');
   assert.ok(render(finished).some((r) => r.color === PALETTE.red && r.w === 400 && r.h === 20), 'finish banner');
 });
+
+test('the finish banner is readable on the snow', () => {
+  const finished = states()[2];
+  const rects = render(finished);
+  assert.ok(
+    rects.some((r) => r.color === PALETTE.guide && r.w === 4 && r.h === 4 && r.y >= 230 && r.y <= 280),
+    'MAALI! text in guide color on snow'
+  );
+});
