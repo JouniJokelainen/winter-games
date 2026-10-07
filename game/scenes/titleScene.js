@@ -1,13 +1,15 @@
 import { TITLE_THEME } from '../audio/songs.js';
-import { drawPanel, drawWinterBackdrop, Snowfall } from '../engine/draw.js';
+import { drawPanel } from '../engine/draw.js';
 import { drawText } from '../engine/font.js';
 import { PALETTE } from '../engine/palette.js';
+import { drawVenueBackdrop } from '../engine/scenery.js';
 import { Menu } from '../ui/menu.js';
 
 export class TitleScene {
   constructor({ game, onCompetition, onPractice }) {
     this.game = game;
-    this.snow = new Snowfall(90);
+    this.highResolution = true;
+    this.time = 0;
     this.menu = new Menu(
       [{ label: 'KILPAILU', value: onCompetition }, { label: 'HARJOITTELU', value: onPractice }],
       { onMove: () => game.audio.playSfx('select') },
@@ -19,7 +21,7 @@ export class TitleScene {
   }
 
   update(dt, input) {
-    this.snow.update(dt);
+    this.time += dt;
     const item = this.menu.update(input);
     if (item) {
       this.game.audio.playSfx('confirm');
@@ -28,13 +30,12 @@ export class TitleScene {
   }
 
   render(ctx) {
-    drawWinterBackdrop(ctx);
-    this.snow.render(ctx);
-    drawText(ctx, 'WINTER', 160, 30, { align: 'center', scale: 4, color: PALETTE.yellow, shadow: PALETTE.darkRed });
-    drawText(ctx, 'GAMES', 160, 64, { align: 'center', scale: 4, color: PALETTE.yellow, shadow: PALETTE.darkRed });
-    drawText(ctx, 'TALVIKISAT', 160, 100, { align: 'center', color: PALETTE.white, shadow: PALETTE.navy });
-    drawPanel(ctx, 90, 124, 140, 44);
-    this.menu.render(ctx, 160, 134, { lineHeight: 14 });
-    drawText(ctx, 'NUOLET + VÄLILYÖNTI', 160, 236, { align: 'center', color: PALETTE.navy });
+    drawVenueBackdrop(ctx, this.time);
+    drawText(ctx, 'WINTER', 320, 60, { align: 'center', scale: 8, color: PALETTE.paper, shadow: PALETTE.slate });
+    drawText(ctx, 'GAMES', 320, 128, { align: 'center', scale: 8, color: PALETTE.paper, shadow: PALETTE.slate });
+    drawText(ctx, 'TALVIKISAT', 320, 200, { align: 'center', scale: 2, color: PALETTE.red, shadow: PALETTE.slate });
+    drawPanel(ctx, 180, 248, 280, 88);
+    this.menu.render(ctx, 320, 268, { lineHeight: 28, scale: 2 });
+    drawText(ctx, 'NUOLET + VÄLILYÖNTI', 320, 472, { align: 'center', scale: 2, color: PALETTE.slate });
   }
 }

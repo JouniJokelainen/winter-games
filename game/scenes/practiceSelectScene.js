@@ -1,8 +1,9 @@
-import { drawPanel, drawWinterBackdrop, Snowfall } from '../engine/draw.js';
+import { drawPanel } from '../engine/draw.js';
 import { drawText } from '../engine/font.js';
 import { PALETTE } from '../engine/palette.js';
 import { EVENT_IDS } from '../core/rules.js';
 import { EVENTS } from '../events/registry.js';
+import { drawVenueBackdrop } from '../engine/scenery.js';
 import { Menu } from '../ui/menu.js';
 
 const BACK = Symbol('back');
@@ -12,7 +13,8 @@ export class PracticeSelectScene {
     this.game = game;
     this.onSelect = onSelect;
     this.onBack = onBack;
-    this.snow = new Snowfall();
+    this.highResolution = true;
+    this.time = 0;
     this.menu = new Menu(
       [...EVENT_IDS.map((eventId) => ({ label: EVENTS[eventId].name, value: eventId })), { label: 'TAKAISIN', value: BACK }],
       { onMove: () => game.audio.playSfx('select') },
@@ -20,7 +22,7 @@ export class PracticeSelectScene {
   }
 
   update(dt, input) {
-    this.snow.update(dt);
+    this.time += dt;
     if (input.wasPressed('Escape')) {
       this.game.audio.playSfx('back');
       this.onBack();
@@ -38,10 +40,9 @@ export class PracticeSelectScene {
   }
 
   render(ctx) {
-    drawWinterBackdrop(ctx);
-    this.snow.render(ctx);
-    drawPanel(ctx, 60, 50, 200, 120);
-    drawText(ctx, 'HARJOITTELU', 160, 62, { align: 'center', scale: 2, color: PALETTE.yellow });
-    this.menu.render(ctx, 160, 96, { lineHeight: 14 });
+    drawVenueBackdrop(ctx, this.time);
+    drawPanel(ctx, 120, 100, 400, 240);
+    drawText(ctx, 'HARJOITTELU', 320, 124, { align: 'center', scale: 4, color: PALETTE.red });
+    this.menu.render(ctx, 320, 192, { lineHeight: 28, scale: 2 });
   }
 }
