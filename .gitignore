@@ -8,3 +8,4 @@ node_modules/
 skills-lock.json
 *.dev.json
 reference/
+_site/

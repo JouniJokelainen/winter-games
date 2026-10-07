@@ -48,3 +48,6 @@ th, td { padding: 4px 8px 4px 0; white-space: nowrap; }
 .num { text-align: right; }
 .rank { width: 3em; color: var(--sky-light); }
 .empty { color: var(--sky-light); }
+.play { text-align: center; margin: 12px 0 0; }
+.play a { color: var(--yellow); text-decoration: none; border: 2px solid var(--yellow); padding: 6px 14px; }
+.play a:hover, .play a:focus { background: var(--yellow); color: var(--night); }

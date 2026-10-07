@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server/server.js",
     "dev": "node server/dev.js",
+    "build:site": "node scripts/build-site.mjs",
     "test": "node --test tests/"
   },
   "engines": {
