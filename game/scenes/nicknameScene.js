@@ -1,4 +1,5 @@
-import { drawBlinking, drawPanel, drawWinterBackdrop, Snowfall } from '../engine/draw.js';
+import { drawBlinking, drawPanel } from '../engine/draw.js';
+import { drawVenueBackdrop } from '../engine/scenery.js';
 import { drawText } from '../engine/font.js';
 import { PALETTE } from '../engine/palette.js';
 import { NicknameEntry } from '../core/nicknameEntry.js';
@@ -16,7 +17,7 @@ export class NicknameScene {
     this.entry = new NicknameEntry();
     this.menu = null;
     this.time = 0;
-    this.snow = new Snowfall();
+    this.highResolution = true;
   }
 
   enter() {
@@ -43,7 +44,6 @@ export class NicknameScene {
 
   update(dt, input) {
     this.time += dt;
-    this.snow.update(dt);
     const typed = input.takeTyped();
     if (input.wasPressed('Escape')) {
       this.game.audio.playSfx('back');
@@ -79,23 +79,22 @@ export class NicknameScene {
   }
 
   render(ctx) {
-    drawWinterBackdrop(ctx);
-    this.snow.render(ctx);
-    drawPanel(ctx, 50, 30, 220, 190);
-    drawText(ctx, 'PELAAJA', 160, 42, { align: 'center', scale: 2, color: PALETTE.yellow });
+    drawVenueBackdrop(ctx, this.time);
+    drawPanel(ctx, 100, 60, 440, 380);
+    drawText(ctx, 'PELAAJA', 320, 84, { align: 'center', scale: 4, color: PALETTE.red });
     if (this.state === 'loading') {
-      drawText(ctx, 'LADATAAN...', 160, 110, { align: 'center', color: PALETTE.white });
+      drawText(ctx, 'LADATAAN...', 320, 220, { align: 'center', scale: 2, color: PALETTE.paper });
     } else if (this.state === 'list') {
-      drawText(ctx, 'VALITSE NIMI', 160, 66, { align: 'center', color: PALETTE.skyLight });
-      this.menu.render(ctx, 160, 84, { lineHeight: 12, maxVisible: 9 });
+      drawText(ctx, 'VALITSE NIMI', 320, 132, { align: 'center', scale: 2, color: PALETTE.paperDim });
+      this.menu.render(ctx, 320, 168, { lineHeight: 24, maxVisible: 9, scale: 2 });
     } else {
-      drawText(ctx, 'KIRJOITA NIMI (MAX 10)', 160, 70, { align: 'center', color: PALETTE.skyLight });
-      drawPanel(ctx, 90, 92, 140, 24);
-      drawText(ctx, this.entry.value, 160, 100, { align: 'center', color: PALETTE.white });
-      drawBlinking(ctx, '_', 160 + this.entry.value.length * 3 + 4, 101, this.time, { color: PALETTE.yellow });
-      drawText(ctx, 'ENTER = OK', 160, 132, { align: 'center', color: PALETTE.white });
-      if (this.message) drawText(ctx, this.message, 160, 150, { align: 'center', color: PALETTE.red });
+      drawText(ctx, 'KIRJOITA NIMI (MAX 10)', 320, 140, { align: 'center', scale: 2, color: PALETTE.paperDim });
+      drawPanel(ctx, 180, 184, 280, 48);
+      drawText(ctx, this.entry.value, 320, 200, { align: 'center', scale: 2, color: PALETTE.paper });
+      drawBlinking(ctx, '_', 320 + this.entry.value.length * 6 + 8, 202, this.time, { scale: 2, color: PALETTE.red });
+      drawText(ctx, 'ENTER = OK', 320, 264, { align: 'center', scale: 2, color: PALETTE.paper });
+      if (this.message) drawText(ctx, this.message, 320, 300, { align: 'center', scale: 2, color: PALETTE.red });
     }
-    drawText(ctx, 'ESC = TAKAISIN', 160, 206, { align: 'center', color: PALETTE.grey });
+    drawText(ctx, 'ESC = TAKAISIN', 320, 412, { align: 'center', scale: 2, color: PALETTE.paperDim });
   }
 }

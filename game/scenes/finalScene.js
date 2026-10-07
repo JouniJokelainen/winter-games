@@ -1,4 +1,5 @@
-import { drawBlinking, drawPanel, drawWinterBackdrop, Snowfall } from '../engine/draw.js';
+import { drawBlinking, drawPanel } from '../engine/draw.js';
+import { drawVenueBackdrop } from '../engine/scenery.js';
 import { drawText } from '../engine/font.js';
 import { PALETTE } from '../engine/palette.js';
 import { EVENTS } from '../events/registry.js';
@@ -17,7 +18,7 @@ export class FinalScene {
     this.onDone = onDone;
     this.status = 'saving';
     this.time = 0;
-    this.snow = new Snowfall(90);
+    this.highResolution = true;
   }
 
   enter() {
@@ -34,7 +35,6 @@ export class FinalScene {
 
   update(dt, input) {
     this.time += dt;
-    this.snow.update(dt);
     if (this.status === 'saving') return;
     if (this.status === 'failed' && input.wasPressed('Enter')) {
       this.save();
@@ -47,23 +47,22 @@ export class FinalScene {
   }
 
   render(ctx) {
-    drawWinterBackdrop(ctx);
-    this.snow.render(ctx);
-    drawPanel(ctx, 30, 20, 260, 210);
-    drawText(ctx, 'LOPPUTULOKSET', 160, 32, { align: 'center', scale: 2, color: PALETTE.yellow, shadow: PALETTE.darkRed });
-    drawText(ctx, this.competition.nickname, 160, 56, { align: 'center', color: PALETTE.skyLight });
+    drawVenueBackdrop(ctx, this.time);
+    drawPanel(ctx, 60, 40, 520, 420);
+    drawText(ctx, 'LOPPUTULOKSET', 320, 64, { align: 'center', scale: 4, color: PALETTE.red });
+    drawText(ctx, this.competition.nickname, 320, 112, { align: 'center', scale: 2, color: PALETTE.paperDim });
     this.competition.eventIds.forEach((eventId, index) => {
-      const y = 78 + index * 14;
-      drawText(ctx, EVENTS[eventId].name, 50, y, { color: PALETTE.white });
-      drawText(ctx, String(this.competition.eventResult(eventId).points), 270, y, { align: 'right', color: PALETTE.white });
+      const y = 156 + index * 28;
+      drawText(ctx, EVENTS[eventId].name, 100, y, { scale: 2, color: PALETTE.paper });
+      drawText(ctx, String(this.competition.eventResult(eventId).points), 540, y, { align: 'right', scale: 2, color: PALETTE.paper });
     });
-    ctx.fillStyle = PALETTE.skyLight;
-    ctx.fillRect(50, 122, 220, 1);
-    drawText(ctx, 'YHTEENSÄ', 50, 132, { scale: 2, color: PALETTE.yellow });
-    drawText(ctx, String(this.competition.total), 270, 132, { align: 'right', scale: 2, color: PALETTE.yellow });
-    const statusColor = this.status === 'failed' ? PALETTE.red : PALETTE.white;
-    drawText(ctx, STATUS_TEXT[this.status], 160, 166, { align: 'center', color: statusColor });
-    if (this.status === 'failed') drawText(ctx, 'ENTER = YRITÄ UUDELLEEN', 160, 180, { align: 'center', color: PALETTE.white });
-    if (this.status !== 'saving') drawBlinking(ctx, 'VÄLILYÖNTI = VALIKKOON', 160, 210, this.time, { color: PALETTE.skyLight });
+    ctx.fillStyle = PALETTE.slateEdge;
+    ctx.fillRect(100, 240, 440, 2);
+    drawText(ctx, 'YHTEENSÄ', 100, 260, { scale: 4, color: PALETTE.red });
+    drawText(ctx, String(this.competition.total), 540, 260, { align: 'right', scale: 4, color: PALETTE.red });
+    const statusColor = this.status === 'failed' ? PALETTE.red : PALETTE.paper;
+    drawText(ctx, STATUS_TEXT[this.status], 320, 332, { align: 'center', scale: 2, color: statusColor });
+    if (this.status === 'failed') drawText(ctx, 'ENTER = YRITÄ UUDELLEEN', 320, 360, { align: 'center', scale: 2, color: PALETTE.paper });
+    if (this.status !== 'saving') drawBlinking(ctx, 'VÄLILYÖNTI = VALIKKOON', 320, 420, this.time, { scale: 2, color: PALETTE.paperDim });
   }
 }
