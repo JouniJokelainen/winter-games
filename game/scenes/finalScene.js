@@ -6,10 +6,16 @@ import { EVENTS } from '../events/registry.js';
 
 const STATUS_TEXT = {
   saving: 'TALLENNETAAN...',
+  local: 'TULOS TALLENNETTU SELAIMEEN',
   published: 'TULOS TALLENNETTU JA JULKAISTU',
   saved: 'TULOS TALLENNETTU (EI JULKAISTU)',
   failed: 'TALLENNUS EPÄONNISTUI',
 };
+
+function statusFor(response) {
+  if (response.local) return 'local';
+  return response.pushed ? 'published' : 'saved';
+}
 
 export class FinalScene {
   constructor({ game, competition, onDone }) {
@@ -29,7 +35,7 @@ export class FinalScene {
   save() {
     this.status = 'saving';
     this.game.repository.saveResult(this.competition.toPayload())
-      .then((response) => { this.status = response.pushed ? 'published' : 'saved'; })
+      .then((response) => { this.status = statusFor(response); })
       .catch(() => { this.status = 'failed'; });
   }
 

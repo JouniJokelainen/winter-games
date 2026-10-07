@@ -1,3 +1,5 @@
+import { LocalScoreRepository } from './localScoreRepository.js';
+
 export class HttpScoreRepository {
   constructor(fetchFn = (...args) => globalThis.fetch(...args)) {
     this.fetch = fetchFn;
@@ -28,5 +30,27 @@ export class HttpScoreRepository {
     const body = await response.json();
     if (!response.ok) throw new Error(body.error ?? `HTTP ${response.status}`);
     return body;
+  }
+}
+
+// Probes the Node server once. Without it (GitHub Pages, server not running) results are kept in the
+// player's own browser. The choice is made once at start-up, so it never changes during a session.
+export async function chooseScoreRepository({
+  fetchFn = (...args) => globalThis.fetch(...args),
+  storage = null,
+  timeoutMs = 2000,
+} = {}) {
+  const http = new HttpScoreRepository(fetchFn);
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('timeout')), timeoutMs);
+  });
+  try {
+    await Promise.race([http.getLeaderboard(), timeout]);
+    return http;
+  } catch {
+    return new LocalScoreRepository(storage);
+  } finally {
+    clearTimeout(timer);
   }
 }
