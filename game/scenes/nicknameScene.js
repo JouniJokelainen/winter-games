@@ -1,7 +1,7 @@
 import { drawBlinking, drawPanel } from '../engine/draw.js';
-import { drawVenueBackdrop } from '../engine/scenery.js';
 import { drawText } from '../engine/font.js';
 import { PALETTE } from '../engine/palette.js';
+import { drawVenueBackdrop } from '../engine/scenery.js';
 import { NicknameEntry } from '../core/nicknameEntry.js';
 import { Menu } from '../ui/menu.js';
 

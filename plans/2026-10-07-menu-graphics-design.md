@@ -11,7 +11,7 @@ Moves the menu scenes to the realistic muted style of the ski jump (`plans/2026-
 ## Architecture
 
 - **`game/engine/scenery.js` (new, 640×512 canvas pixels).** The ski jump's landscape helpers move here unchanged and `skiJumpRender.js` imports them: misty banded sky with the distant snowy ridge, `drawPine`, forest layers, snowfall. Their signatures keep the camera/offset parameters the ski jump uses. The ski jump must look exactly as before.
-- **`drawVenueBackdrop(ctx, time)` (new, in `scenery.js`).** The menu backdrop: misty sky and ridge, two pine layers, a small distant ski jump silhouette (wooden inrun in `wood*` shades on `concrete*` pillars) and a snowy plain in front, with snowfall. The ridge and forest layers drift sideways slowly with `time` (≈6 px/s for the nearest layer, slower further back) and wrap seamlessly. Pure function of `time`; no state.
+- **`drawVenueBackdrop(ctx, time)` (new, in `scenery.js`).** The menu backdrop: misty sky and ridge, two pine layers, a small distant ski jump silhouette (wooden inrun in `wood*` shades on `concrete*` pillars) and a snowy plain in front, with snowfall. The distant ski jump is static; the ridge and forest layers drift sideways slowly with `time` (≈6 px/s for the nearest layer, slower further back) and wrap seamlessly. Pure function of `time`; no state.
 - **Menu scenes draw at full resolution.** Each of the six scenes sets `highResolution = true`. Coordinates are doubled and text uses `scale` ×2 (titles ×4, the title logo ×8), so on-screen sizes stay as they are today. Each scene keeps a `time` (from `dt`) for the backdrop and blinking.
 - **Pause overlay.** `pauseScene` becomes high-res too; the scene manager already sets the transform per scene, so it works over both the low-res slalom and the high-res ski jump.
 - **Kept for now:** `drawWinterBackdrop` and the low-res `Snowfall` in `draw.js` stay, because the placeholder event (low-res) still uses them; they go when that event is replaced.
@@ -22,7 +22,7 @@ Moves the menu scenes to the realistic muted style of the ski jump (`plans/2026-
 - **Panel (`drawPanel(ctx, x, y, width, height)`, canvas pixels):** 2 px `slateEdge` border; the inside is one `slate` fill at 88 % opacity (`rgba`), so the backdrop shows through slightly. (A per-pixel dither would cost tens of thousands of `fillRect` calls per frame.) The placeholder event still draws at 320×256, so its panel border shows 4 px wide; acceptable until that event is replaced.
 - **Menu (`Menu#render(ctx, centerX, y, { lineHeight, maxVisible, scale = 1 })`):** the selected row in `red` with arrows (`> KILPAILU <`), other rows in `paper`.
 - **Title:** "WINTER" and "GAMES" at scale 8 in `paper` with a `slate` shadow; "TALVIKISAT" at scale 2 in `red`; the menu panel below; the controls hint on the snow in `slate` (`paperDim` is too faint on snow).
-- **Info, practice select, final:** titles in `red` (scale 4), body lines in `paper`, the blinking prompt in `paperDim`. Final results: event rows and the total in `paper`, the divider line in `slateEdge`, the total row in `red`.
+- **Info, practice select, final:** titles in `red` (scale 4), body lines in `paper`, the blinking prompt in `paperDim`. Final results: event rows in `paper`, the divider line in `slateEdge`, the total row in `red`.
 - **Nickname:** the entry field is a small panel in the same style; the cursor and error messages in `red`; hints in `paperDim`.
 - **Pause:** the existing dark dim over the whole canvas (`rgba(0, 0, 0, 0.6)`) and the same panel in the middle; title in `red`.
 

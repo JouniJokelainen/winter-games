@@ -74,11 +74,8 @@ export function drawSnowfall(ctx, time) {
 
 const MENU_DRIFT_PX_PER_S = 11; // the near forest (parallax 0.55) drifts ≈6 px/s
 const MENU_CAMERA_Y = 1200;
-const JUMP_PARALLAX = 0.08; // the distant ski jump moves with the ridge
-const JUMP_PERIOD_PX = 1600; // it scrolls out on the left and comes back from the right
-const JUMP_HOME_X = 380; // left edge of the silhouette at time 0
+const JUMP_HOME_X = 480; // left edge of the silhouette, positioned right of the title menu
 const JUMP_BASE_Y = 330; // height of the takeoff table's foot
-const JUMP_WIDTH_PX = 250;
 const PLAIN_TOP = 436;
 
 function drawDistantJump(ctx, left, baseY) {
@@ -115,9 +112,7 @@ function drawSnowPlain(ctx) {
 export function drawVenueBackdrop(ctx, time) {
   const camera = { x: Math.round(time * MENU_DRIFT_PX_PER_S), y: MENU_CAMERA_Y };
   drawMistySky(ctx, camera);
-  let jumpLeft = JUMP_HOME_X - Math.round((camera.x * JUMP_PARALLAX) % JUMP_PERIOD_PX);
-  if (jumpLeft < -JUMP_WIDTH_PX) jumpLeft += JUMP_PERIOD_PX;
-  if (jumpLeft < CANVAS_WIDTH) drawDistantJump(ctx, jumpLeft, JUMP_BASE_Y);
+  drawDistantJump(ctx, JUMP_HOME_X, JUMP_BASE_Y);
   drawForestLayer(ctx, camera, FAR_FOREST);
   drawForestLayer(ctx, camera, NEAR_FOREST);
   drawSnowPlain(ctx);
