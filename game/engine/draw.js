@@ -40,11 +40,25 @@ export function drawWinterBackdrop(ctx) {
   for (let y = HORIZON_Y + 4; y < SCREEN_HEIGHT; y += 9) ctx.fillRect(0, y, SCREEN_WIDTH, 1);
 }
 
+const PANEL_BORDER = 2;
+
+function translucent(hex, alpha) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+const PANEL_FILL = translucent(PALETTE.slate, 0.88);
+
+// A slightly see-through slate panel with a thin concrete-grey border (canvas pixels).
 export function drawPanel(ctx, x, y, width, height) {
-  ctx.fillStyle = PALETTE.skyLight;
-  ctx.fillRect(x, y, width, height);
-  ctx.fillStyle = PALETTE.night;
-  ctx.fillRect(x + 1, y + 1, width - 2, height - 2);
+  const b = PANEL_BORDER;
+  ctx.fillStyle = PANEL_FILL;
+  ctx.fillRect(x + b, y + b, width - 2 * b, height - 2 * b);
+  ctx.fillStyle = PALETTE.slateEdge;
+  ctx.fillRect(x, y, width, b);
+  ctx.fillRect(x, y + height - b, width, b);
+  ctx.fillRect(x, y + b, b, height - 2 * b);
+  ctx.fillRect(x + width - b, y + b, b, height - 2 * b);
 }
 
 export function drawBlinking(ctx, text, x, y, time, options = {}) {

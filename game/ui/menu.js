@@ -36,14 +36,15 @@ export class Menu {
     return null;
   }
 
-  render(ctx, centerX, y, { lineHeight = 12, maxVisible = Infinity } = {}) {
+  render(ctx, centerX, y, { lineHeight = 12, maxVisible = Infinity, scale = 1 } = {}) {
     const [start, end] = visibleWindow(this.items.length, this.index, maxVisible);
     for (let i = start; i < end; i++) {
       const isSelected = i === this.index;
       const text = isSelected ? `> ${labelOf(this.items[i])} <` : labelOf(this.items[i]);
       drawText(ctx, text, centerX, y + (i - start) * lineHeight, {
         align: 'center',
-        color: isSelected ? PALETTE.yellow : PALETTE.white,
+        scale,
+        color: isSelected ? PALETTE.red : PALETTE.paper,
       });
     }
   }
