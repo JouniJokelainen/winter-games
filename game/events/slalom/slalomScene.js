@@ -39,6 +39,7 @@ export function buildAttempt(state) {
 export class SlalomScene {
   constructor({ game, mode, attemptNumber, onComplete, course = COURSE }) {
     this.game = game;
+    this.highResolution = true;
     this.onComplete = onComplete;
     this.state = createSlalomState(course);
     this.label = mode === 'competition' ? `YRITYS ${attemptNumber}/${ATTEMPTS_PER_EVENT}` : `HARJOITUS ${attemptNumber}`;

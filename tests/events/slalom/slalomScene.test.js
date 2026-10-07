@@ -115,3 +115,8 @@ test('the registry creates the real slalom scene', () => {
   assert.ok(scene instanceof SlalomScene);
   assert.deepEqual(EVENTS.slalom.instructions, ['VÄLILYÖNTI = LÄHTÖ JA VAUHTI', 'NUOLET = KÄÄNTYMINEN', 'KIERRÄ KEPIT ULKOPUOLELTA']);
 });
+
+test('the slalom scene draws at the full canvas resolution', () => {
+  const scene = new SlalomScene({ game: recordingGame(), mode: 'practice', attemptNumber: 1, onComplete() {} });
+  assert.equal(scene.highResolution, true);
+});

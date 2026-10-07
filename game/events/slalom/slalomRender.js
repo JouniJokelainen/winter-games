@@ -1,256 +1,244 @@
 import { formatTime } from '../../core/format.js';
-import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../../engine/constants.js';
+import { CANVAS_HEIGHT, CANVAS_WIDTH } from '../../engine/constants.js';
 import { drawBlinking } from '../../engine/draw.js';
 import { drawText } from '../../engine/font.js';
 import { PALETTE } from '../../engine/palette.js';
+import { drawPine, drawSnowfall } from '../../engine/scenery.js';
+import { SKIER_STYLES } from '../skiJump/skier.js';
 import { SLALOM_CONFIG } from './slalomSim.js';
+import { drawSlalomSkier } from './slalomSkier.js';
 
-export const SKIER_SCREEN_Y = 70;
+// Draws at the full 640×512 canvas (SlalomScene.highResolution). The simulation works in world
+// pixels (320 wide); WORLD_SCALE maps them to the canvas, so the view covers the same area as before.
+export const WORLD_SCALE = 2;
+export const SKIER_SCREEN_Y = 70; // world pixels from the top of the view to the skier's boots
 export const KMH_PER_PX = 0.35;
 
-const HUD_HEIGHT = 22;
-const POLE_HEIGHT = 14;
-const LEAN_THRESHOLD = 0.15;
+const HUD_HEIGHT = 44;
+const TEXT_SCALE = 2;
+const GROOMER_SPACING = 32;
+const SIDE_ROW = 48; // canvas px between pines, spectators and fence posts along the course
+const POLE_HEIGHT = 28;
+const SPECTATOR_COLORS = [PALETTE.suitPink, PALETTE.guide, PALETTE.wood2, PALETTE.pineLight, PALETTE.concrete1];
 
-const SPRITE_COLORS = {
-  h: PALETTE.red,
-  g: PALETTE.black,
-  s: PALETTE.skin,
-  j: PALETTE.blue,
-  p: PALETTE.navy,
-  k: PALETTE.yellow,
-};
+const toCanvasX = (x) => Math.round(x * WORLD_SCALE);
+const toCanvasY = (y, top) => Math.round((y - top) * WORLD_SCALE);
+const wrap = (value, period) => ((value % period) + period) % period;
 
-const LEAN_LEFT = [
-  '...hhhh.....',
-  '..hhhhhh....',
-  '..hggggh....',
-  '..hssssh....',
-  '...ssss.....',
-  '.jjjjjjjj...',
-  'jjjjjjjjjj..',
-  's.jjjjjj.s..',
-  's..jjjjjj.s.',
-  '...pppppp...',
-  '...pppppp...',
-  '...pp..pp...',
-  '....pp..pp..',
-  '....pp..pp..',
-  '...kkk..kkk.',
-  '...kkk..kkk.',
-];
+// ---- slope, track and sides -------------------------------------------------------------------
 
-export const SKIER_SPRITES = {
-  straight: [
-    '....hhhh....',
-    '...hhhhhh...',
-    '...hggggh...',
-    '...hssssh...',
-    '....ssss....',
-    '..jjjjjjjj..',
-    '.jjjjjjjjjj.',
-    '.s.jjjjjj.s.',
-    '.s.jjjjjj.s.',
-    '...pppppp...',
-    '...pppppp...',
-    '...pp..pp...',
-    '...pp..pp...',
-    '...pp..pp...',
-    '..kkk..kkk..',
-    '..kkk..kkk..',
-  ],
-  left: LEAN_LEFT,
-  right: LEAN_LEFT.map((row) => [...row].reverse().join('')),
-  fallen: [
-    '............',
-    '............',
-    '............',
-    '............',
-    '............',
-    '............',
-    '............',
-    '............',
-    '............',
-    'kk..........',
-    'kkhhh.......',
-    '.hgggjjjjpp.',
-    '.hsssjjjjppk',
-    '..s..jjjj.pk',
-    '.......s...k',
-    '............',
-  ],
-};
-
-const SPECTATOR_COLORS = [PALETTE.red, PALETTE.orange, PALETTE.green, PALETTE.purple, PALETTE.cyan, PALETTE.pink];
-
-export function skierPose(state) {
-  if (state.phase === 'disqualified') return 'fallen';
-  if (state.angle < -LEAN_THRESHOLD) return 'left';
-  if (state.angle > LEAN_THRESHOLD) return 'right';
-  return 'straight';
-}
-
-function drawSprite(ctx, rows, x, y) {
-  rows.forEach((row, rowIndex) => {
-    [...row].forEach((code, colIndex) => {
-      if (code === '.') return;
-      ctx.fillStyle = SPRITE_COLORS[code];
-      ctx.fillRect(x + colIndex, y + rowIndex, 1, 1);
-    });
-  });
-}
-
-function drawSnow(ctx, top) {
-  ctx.fillStyle = PALETTE.white;
-  ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-  ctx.fillStyle = PALETTE.ice;
-  for (let worldY = Math.floor(top / 16) * 16; worldY < top + SCREEN_HEIGHT; worldY += 16) {
-    ctx.fillRect(0, Math.round(worldY - top), SCREEN_WIDTH, 1);
-  }
-}
-
-function drawPine(ctx, x, baseY) {
-  ctx.fillStyle = PALETTE.pine;
-  for (let row = 0; row < 12; row++) {
-    const half = Math.floor(row / 3) + 1;
-    ctx.fillRect(x - half, baseY - 12 + row, half * 2 + 1, 1);
-  }
-  ctx.fillStyle = PALETTE.brown;
-  ctx.fillRect(x, baseY, 1, 2);
-}
-
-function drawSpectator(ctx, x, y, index) {
-  ctx.fillStyle = PALETTE.skin;
-  ctx.fillRect(x + 1, y, 2, 2);
-  ctx.fillStyle = SPECTATOR_COLORS[index % SPECTATOR_COLORS.length];
-  ctx.fillRect(x, y + 2, 4, 3);
-  ctx.fillStyle = PALETTE.darkGrey;
-  ctx.fillRect(x, y + 5, 1, 2);
-  ctx.fillRect(x + 3, y + 5, 1, 2);
-}
-
-function drawSidelines(ctx, course, top) {
-  const firstRow = Math.floor(top / 24) * 24;
-  for (let worldY = firstRow; worldY < top + SCREEN_HEIGHT + 24; worldY += 24) {
-    const y = Math.round(worldY - top);
-    const index = Math.abs(worldY / 24);
-    if (index % 2 === 0) {
-      drawPine(ctx, 14, y);
-      drawPine(ctx, SCREEN_WIDTH - 14, y);
-    } else {
-      drawSpectator(ctx, 34, y - 6, index);
-      drawSpectator(ctx, SCREEN_WIDTH - 38, y - 6, index + 3);
-    }
-    ctx.fillStyle = index % 2 === 0 ? PALETTE.red : PALETTE.white;
-    ctx.fillRect(course.fenceLeftX - 1, y - 6, 2, 6);
-    ctx.fillRect(course.fenceRightX - 1, y - 6, 2, 6);
-  }
-  ctx.fillStyle = PALETTE.grey;
-  ctx.fillRect(course.fenceLeftX - 2, 0, 1, SCREEN_HEIGHT);
-  ctx.fillRect(course.fenceRightX + 1, 0, 1, SCREEN_HEIGHT);
-}
-
-function drawStartAndFinish(ctx, course, top) {
-  const hutY = Math.round(course.startY - top - 30);
-  if (hutY > -40 && hutY < SCREEN_HEIGHT) {
-    ctx.fillStyle = PALETTE.darkRed;
-    ctx.fillRect(course.startX - 24, hutY, 48, 6);
-    ctx.fillStyle = PALETTE.brown;
-    ctx.fillRect(course.startX - 20, hutY + 6, 40, 18);
-    ctx.fillStyle = PALETTE.night;
-    ctx.fillRect(course.startX - 8, hutY + 12, 16, 12);
-  }
-  const finishY = Math.round(course.finishY - top);
-  if (finishY > -40 && finishY < SCREEN_HEIGHT + 40) {
-    for (let x = course.fenceLeftX; x < course.fenceRightX; x += 4) {
-      ctx.fillStyle = (x / 4) % 2 === 0 ? PALETTE.black : PALETTE.white;
-      ctx.fillRect(x, finishY, 4, 2);
-    }
-    ctx.fillStyle = PALETTE.darkGrey;
-    ctx.fillRect(course.fenceLeftX, finishY - 28, 2, 28);
-    ctx.fillRect(course.fenceRightX - 2, finishY - 28, 2, 28);
-    ctx.fillStyle = PALETTE.red;
-    ctx.fillRect(course.fenceLeftX, finishY - 30, course.fenceRightX - course.fenceLeftX, 10);
-    drawText(ctx, 'MAALI', (course.fenceLeftX + course.fenceRightX) / 2, finishY - 28, { align: 'center', color: PALETTE.white });
+function drawSlope(ctx, course, offset) {
+  const left = toCanvasX(course.fenceLeftX);
+  const right = toCanvasX(course.fenceRightX);
+  ctx.fillStyle = PALETTE.snowMid;
+  ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  ctx.fillStyle = PALETTE.snowLight;
+  ctx.fillRect(left, 0, right - left, CANVAS_HEIGHT);
+  // Groomer lines scrolling with the course.
+  ctx.fillStyle = PALETTE.snowMid;
+  for (let y = wrap(-offset, GROOMER_SPACING); y < CANVAS_HEIGHT; y += GROOMER_SPACING) {
+    ctx.fillRect(left, y, right - left, 1);
   }
 }
 
 function drawTrack(ctx, track, top) {
-  ctx.fillStyle = PALETTE.snowShadow;
+  ctx.fillStyle = PALETTE.trackGroove;
   for (const point of track) {
-    const y = Math.round(point.y - top);
-    if (y >= 0 && y < SCREEN_HEIGHT) {
-      ctx.fillRect(Math.round(point.x) - 3, y, 1, 1);
-      ctx.fillRect(Math.round(point.x) + 2, y, 1, 1);
-    }
+    const y = toCanvasY(point.y, top);
+    if (y < 0 || y >= CANVAS_HEIGHT) continue;
+    const x = toCanvasX(point.x);
+    ctx.fillRect(x - 7, y, 2, 4);
+    ctx.fillRect(x + 5, y, 2, 4);
   }
 }
 
+function drawPineWithShadow(ctx, x, baseY, height) {
+  ctx.fillStyle = PALETTE.shadow;
+  for (let i = 0; i < 6; i++) ctx.fillRect(x + 2 + i * 2, baseY - 1 + i, Math.round(height / 4), 1);
+  drawPine(ctx, x, baseY, height);
+}
+
+// A spectator in a winter coat and a woolly hat; every third one waves (arm up one second, down one).
+function drawSpectator(ctx, x, baseY, index, time) {
+  ctx.fillStyle = PALETTE.concrete3;
+  ctx.fillRect(x + 1, baseY - 6, 3, 6);
+  ctx.fillRect(x + 6, baseY - 6, 3, 6);
+  ctx.fillStyle = SPECTATOR_COLORS[index % SPECTATOR_COLORS.length];
+  ctx.fillRect(x, baseY - 16, 10, 10);
+  if (index % 3 === 0 && Math.floor(time + index * 0.37) % 2 === 0) ctx.fillRect(x + 10, baseY - 24, 2, 9);
+  ctx.fillStyle = PALETTE.skin;
+  ctx.fillRect(x + 2, baseY - 22, 6, 6);
+  ctx.fillStyle = index % 2 === 0 ? PALETTE.red : PALETTE.guide;
+  ctx.fillRect(x + 2, baseY - 24, 6, 3);
+}
+
+function drawNet(ctx, fenceX, offset) {
+  ctx.fillStyle = PALETTE.snowDark;
+  ctx.fillRect(fenceX - 1, 0, 2, CANVAS_HEIGHT);
+  for (let y = wrap(-offset, 4); y < CANVAS_HEIGHT; y += 4) ctx.fillRect(fenceX - 2, y, 4, 1);
+}
+
+function drawFencePost(ctx, fenceX, baseY) {
+  ctx.fillStyle = PALETTE.wood3;
+  ctx.fillRect(fenceX - 2, baseY - 10, 4, 10);
+  ctx.fillStyle = PALETTE.wood6;
+  ctx.fillRect(fenceX + 1, baseY - 10, 1, 10);
+}
+
+function drawSides(ctx, course, offset, time) {
+  const left = toCanvasX(course.fenceLeftX);
+  const right = toCanvasX(course.fenceRightX);
+  drawNet(ctx, left, offset);
+  drawNet(ctx, right, offset);
+  const first = Math.floor(offset / SIDE_ROW) - 1;
+  for (let i = first; i < first + CANVAS_HEIGHT / SIDE_ROW + 3; i++) {
+    const y = i * SIDE_ROW - offset;
+    const row = Math.abs(i);
+    if (row % 2 === 0) {
+      drawPineWithShadow(ctx, 28, y, 44 + (row % 3) * 8);
+      drawPineWithShadow(ctx, CANVAS_WIDTH - 28, y, 44 + ((row + 1) % 3) * 8);
+    } else {
+      drawSpectator(ctx, 72, y, row, time);
+      drawSpectator(ctx, CANVAS_WIDTH - 76, y, row + 3, time);
+    }
+    drawFencePost(ctx, left, y);
+    drawFencePost(ctx, right, y);
+  }
+}
+
+// ---- start and finish ---------------------------------------------------------------------------
+
+function drawStartHut(ctx, course, top) {
+  const cx = toCanvasX(course.startX);
+  const y = toCanvasY(course.startY, top) - 60;
+  if (y < -80 || y > CANVAS_HEIGHT) return;
+  ctx.fillStyle = PALETTE.wood8;
+  ctx.fillRect(cx - 50, y, 100, 12);
+  ctx.fillStyle = PALETTE.wood3;
+  ctx.fillRect(cx - 42, y + 12, 84, 36);
+  ctx.fillStyle = PALETTE.wood5;
+  for (let i = 0; i < 84; i += 8) ctx.fillRect(cx - 42 + i, y + 12, 1, 36);
+  ctx.fillStyle = PALETTE.wood8;
+  ctx.fillRect(cx - 16, y + 22, 32, 26);
+}
+
+function drawFinish(ctx, course, top) {
+  const y = toCanvasY(course.finishY, top);
+  if (y < -80 || y > CANVAS_HEIGHT + 80) return;
+  const left = toCanvasX(course.fenceLeftX);
+  const right = toCanvasX(course.fenceRightX);
+  for (let x = left; x < right; x += 8) {
+    const even = ((x - left) / 8) % 2 === 0;
+    ctx.fillStyle = even ? PALETTE.black : PALETTE.paper;
+    ctx.fillRect(x, y, 8, 4);
+    ctx.fillStyle = even ? PALETTE.paper : PALETTE.black;
+    ctx.fillRect(x, y + 4, 8, 4);
+  }
+  for (const postX of [left, right - 8]) {
+    ctx.fillStyle = PALETTE.concrete1;
+    ctx.fillRect(postX, y - 56, 8, 56);
+    ctx.fillStyle = PALETTE.concrete3;
+    ctx.fillRect(postX + 6, y - 56, 2, 56);
+  }
+  ctx.fillStyle = PALETTE.red;
+  ctx.fillRect(left, y - 60, right - left, 20);
+  ctx.fillStyle = PALETTE.darkRed;
+  ctx.fillRect(left, y - 42, right - left, 2);
+  drawText(ctx, 'MAALI', (left + right) / 2, y - 56, { align: 'center', scale: TEXT_SCALE, color: PALETTE.paper });
+}
+
+// ---- gates and skier ----------------------------------------------------------------------------
+
 function drawPole(ctx, pole, status, top) {
-  const baseY = Math.round(pole.y - top);
-  if (baseY < -POLE_HEIGHT || baseY > SCREEN_HEIGHT + POLE_HEIGHT) return;
-  const color = pole.color === 'red' ? PALETTE.red : PALETTE.blue;
-  const x = Math.round(pole.x);
-  ctx.fillStyle = color;
+  const x = toCanvasX(pole.x);
+  const baseY = toCanvasY(pole.y, top);
+  if (baseY < -POLE_HEIGHT || baseY > CANVAS_HEIGHT + POLE_HEIGHT) return;
+  const color = pole.color === 'red' ? PALETTE.red : PALETTE.guide;
   if (status.hit) {
-    for (let i = 0; i < 10; i++) ctx.fillRect(x + i, baseY - Math.floor(i / 2), 1, 1);
+    // Knocked over, lying on the snow.
+    for (let i = 0; i < 24; i++) {
+      ctx.fillStyle = PALETTE.shadow;
+      ctx.fillRect(x + i, baseY - Math.floor(i / 3) + 2, 1, 2);
+      ctx.fillStyle = color;
+      ctx.fillRect(x + i, baseY - Math.floor(i / 3), 1, 3);
+    }
   } else {
-    ctx.fillRect(x, baseY - POLE_HEIGHT, 2, POLE_HEIGHT);
-    const flagX = pole.side === 'left' ? x - 6 : x + 2;
-    ctx.fillRect(flagX, baseY - POLE_HEIGHT, 6, 5);
-    ctx.fillStyle = PALETTE.white;
-    const arrowTip = pole.side === 'left' ? flagX + 1 : flagX + 4;
-    ctx.fillRect(arrowTip, baseY - POLE_HEIGHT + 2, 1, 1);
-    ctx.fillRect(flagX + 2, baseY - POLE_HEIGHT + 1, 2, 3);
+    ctx.fillStyle = PALETTE.shadow;
+    for (let i = 0; i < 14; i++) ctx.fillRect(x + 2 + i, baseY + Math.floor(i / 3), 1, 2);
+    ctx.fillStyle = color;
+    ctx.fillRect(x - 2, baseY - POLE_HEIGHT, 4, POLE_HEIGHT);
+    const flagX = pole.side === 'left' ? x - 14 : x + 2;
+    ctx.fillRect(flagX, baseY - POLE_HEIGHT, 12, 10);
+    // Arrow towards the side the skier must pass on.
+    ctx.fillStyle = PALETTE.paper;
+    ctx.fillRect(flagX + 4, baseY - POLE_HEIGHT + 3, 4, 4);
+    ctx.fillRect(pole.side === 'left' ? flagX + 2 : flagX + 8, baseY - POLE_HEIGHT + 4, 2, 2);
   }
   if (status.result === 'passed') {
     ctx.fillStyle = PALETTE.green;
-    ctx.fillRect(x - 1, baseY + 2, 3, 3);
+    ctx.fillRect(x - 3, baseY + 4, 6, 6);
   } else if (status.result === 'missed') {
     ctx.fillStyle = PALETTE.red;
-    for (let i = 0; i < 5; i++) {
-      ctx.fillRect(x - 2 + i, baseY + 2 + i, 1, 1);
-      ctx.fillRect(x + 2 - i, baseY + 2 + i, 1, 1);
+    for (let i = 0; i < 9; i++) {
+      ctx.fillRect(x - 4 + i, baseY + 4 + i, 2, 2);
+      ctx.fillRect(x + 4 - i, baseY + 4 + i, 2, 2);
     }
   }
 }
 
+function drawSkierWithShadow(ctx, state) {
+  const x = toCanvasX(state.x);
+  const y = SKIER_SCREEN_Y * WORLD_SCALE;
+  ctx.fillStyle = PALETTE.shadow;
+  for (let row = -3; row <= 3; row++) {
+    const half = Math.round(16 * Math.sqrt(1 - (row / 4) ** 2));
+    ctx.fillRect(x - half + 4, y + 2 + row, half * 2, 1);
+  }
+  drawSlalomSkier(ctx, SKIER_STYLES.classic, x, y, state.angle, state.phase === 'disqualified');
+}
+
+// ---- HUD and banners ----------------------------------------------------------------------------
+
 function drawHud(ctx, state, label) {
   ctx.fillStyle = PALETTE.night;
-  ctx.fillRect(0, 0, SCREEN_WIDTH, HUD_HEIGHT);
-  drawText(ctx, `AIKA ${formatTime(state.time)}`, 4, 3, { color: PALETTE.white });
-  drawText(ctx, `${Math.round(state.speed * KMH_PER_PX)} KM/H`, 4, 12, { color: PALETTE.white });
+  ctx.fillRect(0, 0, CANVAS_WIDTH, HUD_HEIGHT);
+  drawText(ctx, `AIKA ${formatTime(state.time)}`, 8, 6, { scale: TEXT_SCALE, color: PALETTE.white });
+  drawText(ctx, `${Math.round(state.speed * KMH_PER_PX)} KM/H`, 8, 24, { scale: TEXT_SCALE, color: PALETTE.white });
   ctx.fillStyle = PALETTE.darkGrey;
-  ctx.fillRect(52, 13, 50, 5);
-  ctx.fillStyle = PALETTE.yellow;
-  ctx.fillRect(52, 13, Math.round((50 * state.speed) / SLALOM_CONFIG.maxSpeed), 5);
-  drawText(ctx, label, SCREEN_WIDTH / 2, 3, { align: 'center', color: PALETTE.skyLight });
-  drawText(ctx, `OSUMAT ${state.hits}`, SCREEN_WIDTH - 4, 3, { align: 'right', color: PALETTE.white });
-  drawText(ctx, `OHITETUT ${state.missed}/${SLALOM_CONFIG.maxMissed}`, SCREEN_WIDTH - 4, 12, {
+  ctx.fillRect(104, 26, 100, 10);
+  ctx.fillStyle = PALETTE.paper;
+  ctx.fillRect(104, 26, Math.round((100 * state.speed) / SLALOM_CONFIG.maxSpeed), 10);
+  drawText(ctx, label, CANVAS_WIDTH / 2, 6, { align: 'center', scale: TEXT_SCALE, color: PALETTE.skyLight });
+  drawText(ctx, `OSUMAT ${state.hits}`, CANVAS_WIDTH - 8, 6, { align: 'right', scale: TEXT_SCALE, color: PALETTE.white });
+  drawText(ctx, `OHITETUT ${state.missed}/${SLALOM_CONFIG.maxMissed}`, CANVAS_WIDTH - 8, 24, {
     align: 'right',
+    scale: TEXT_SCALE,
     color: state.missed > 0 ? PALETTE.orange : PALETTE.white,
   });
 }
 
 function drawBanner(ctx, state, time) {
   if (state.phase === 'ready') {
-    drawBlinking(ctx, 'VÄLILYÖNTI = LÄHTÖ', SCREEN_WIDTH / 2, 130, time, { color: PALETTE.navy });
+    drawBlinking(ctx, 'VÄLILYÖNTI = LÄHTÖ', CANVAS_WIDTH / 2, 260, time, { scale: TEXT_SCALE, color: PALETTE.night });
   } else if (state.phase === 'finished') {
-    drawText(ctx, 'MAALI!', SCREEN_WIDTH / 2, 120, { align: 'center', scale: 2, color: PALETTE.yellow, shadow: PALETTE.darkRed });
+    drawText(ctx, 'MAALI!', CANVAS_WIDTH / 2, 240, { align: 'center', scale: 4, color: PALETTE.paper, shadow: PALETTE.slate });
   } else if (state.phase === 'disqualified') {
-    drawText(ctx, 'HYLÄTTY', SCREEN_WIDTH / 2, 120, { align: 'center', scale: 2, color: PALETTE.red, shadow: PALETTE.black });
+    drawText(ctx, 'HYLÄTTY', CANVAS_WIDTH / 2, 240, { align: 'center', scale: 4, color: PALETTE.red, shadow: PALETTE.black });
   }
 }
 
 export function renderSlalom(ctx, { state, track, label, time }) {
   const { course } = state;
   const top = state.y - SKIER_SCREEN_Y;
-  drawSnow(ctx, top);
-  drawSidelines(ctx, course, top);
-  drawStartAndFinish(ctx, course, top);
+  const offset = Math.round(top * WORLD_SCALE);
+  drawSlope(ctx, course, offset);
   drawTrack(ctx, track, top);
+  drawSides(ctx, course, offset, time);
+  drawStartHut(ctx, course, top);
+  drawFinish(ctx, course, top);
   course.poles.forEach((pole, index) => drawPole(ctx, pole, state.poles[index], top));
-  drawSprite(ctx, SKIER_SPRITES[skierPose(state)], Math.round(state.x) - 6, SKIER_SCREEN_Y - 14);
+  drawSkierWithShadow(ctx, state);
+  drawSnowfall(ctx, time);
   drawHud(ctx, state, label);
   drawBanner(ctx, state, time);
 }
