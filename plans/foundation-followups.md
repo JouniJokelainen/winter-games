@@ -6,15 +6,14 @@ Deferred findings from the foundation reviews. Each event plan picks up the item
 - Done in `plans/2026-10-06-slalom.md`: per-tick press counting (`Input#pressCount`), `event.key` guard, `fakeInput` held/pressed/counts, slalom time tie-break test.
 
 ## Ski jump plan
-- Round both x and y in `drawText` (camera scrolling gives fractional positions).
-- `skiJumpPoints` returns NaN for an unknown landing: add a guard and tests, plus `LANDING_POINTS` tests.
+- Done in `plans/2026-10-06-ski-jump.md`: `drawText` rounds y, `skiJumpPoints` rejects unknown landings, `LANDING_POINTS` tests, ski jump event driver, 640×512 canvas.
 
 ## Luge plan
 - Add a luge "faster but fewer points" test for `bestAttempt`.
 - Consider `pause()`/`resume()` hooks on event scenes for continuous sounds (scraping) while the pause menu is open.
 
-## Ski jump and luge plans (both)
-- Add the event's bot driver to `tests/helpers/eventDrivers.js` (`inputForEvent`) and extend `finishAttempt` in `tests/flow.test.js`, which currently detects only `SlalomScene`.
+## Luge plan (event drivers)
+- Add the luge bot driver to `tests/helpers/eventDrivers.js` (`inputForEvent`) and extend `finishAttempt` in `tests/flow.test.js` (it recognises `SkiJumpScene` and `SlalomScene`).
 
 ## After the ski jump: playable on GitHub Pages (user decision 2026-10-07)
 - Publish the game itself on GitHub Pages (e.g. `docs/peli/`, or a GitHub Actions deploy) so it runs in a browser without installing Node.

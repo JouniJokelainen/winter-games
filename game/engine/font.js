@@ -95,6 +95,7 @@ export function drawText(ctx, text, x, y, { color = '#ffffff', scale = 1, align 
   const width = textWidth(text, scale);
   const offset = align === 'center' ? width / 2 : align === 'right' ? width : 0;
   const left = Math.round(x - offset);
-  if (shadow) paint(ctx, chars, left + scale, y + scale, shadow, scale);
-  paint(ctx, chars, left, y, color, scale);
+  const top = Math.round(y);
+  if (shadow) paint(ctx, chars, left + scale, top + scale, shadow, scale);
+  paint(ctx, chars, left, top, color, scale);
 }

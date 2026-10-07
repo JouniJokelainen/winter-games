@@ -3,6 +3,7 @@ import { METRIC_KEY, SKI_JUMP_MAX_DISTANCE, TARGET_TIME_SECONDS } from './rules.
 export const LANDING_POINTS = { perfect: 20, poor: 5, fall: 0 };
 
 export function skiJumpPoints(distance, landing) {
+  if (!(landing in LANDING_POINTS)) throw new RangeError(`unknown landing: ${landing}`);
   if (landing === 'fall') return 0;
   const metres = Math.min(SKI_JUMP_MAX_DISTANCE, Math.floor(distance));
   const distancePoints = Math.max(0, 60 - 2 * (SKI_JUMP_MAX_DISTANCE - metres));

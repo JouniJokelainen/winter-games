@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  bestAttempt, eventResult, lugePoints, overtimeSeconds, skiJumpPoints, slalomPoints,
+  bestAttempt, eventResult, LANDING_POINTS, lugePoints, overtimeSeconds, skiJumpPoints, slalomPoints,
 } from '../../game/core/scoring.js';
 
 test('skiJumpPoints: 200 m perfect landing is the maximum 80', () => {
@@ -80,4 +80,13 @@ test('bestAttempt slalom breaks equal points by faster time', () => {
     { valid: true, points: 50, time: 30.9 },
   ];
   assert.equal(bestAttempt('slalom', attempts), attempts[1]);
+});
+
+test('skiJumpPoints rejects an unknown landing instead of returning NaN', () => {
+  assert.throws(() => skiJumpPoints(190, 'telemark'), /unknown landing: telemark/);
+  assert.throws(() => skiJumpPoints(190, undefined), RangeError);
+});
+
+test('LANDING_POINTS gives 20 for perfect, 5 for poor, 0 for a fall', () => {
+  assert.deepEqual(LANDING_POINTS, { perfect: 20, poor: 5, fall: 0 });
 });

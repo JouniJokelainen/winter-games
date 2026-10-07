@@ -58,3 +58,10 @@ test('drawText draws the shadow first, offset by scale', () => {
   assert.equal(shadowRects[0].x, textRects[0].x + 1);
   assert.equal(shadowRects[0].y, textRects[0].y + 1);
 });
+
+test('drawText rounds a fractional y to whole pixels', () => {
+  const ctx = recordingCtx();
+  drawText(ctx, 'I', 10, 20.6, { color: '#fff', shadow: '#000' });
+  for (const rect of ctx.rects) assert.ok(Number.isInteger(rect.y), `y ${rect.y}`);
+  assert.equal(Math.min(...ctx.rects.filter((r) => r.color === '#fff').map((r) => r.y)), 21);
+});
