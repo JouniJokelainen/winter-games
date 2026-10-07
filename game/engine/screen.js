@@ -1,7 +1,7 @@
-import { CANVAS_HEIGHT, CANVAS_WIDTH } from './constants.js';
+import { CANVAS_HEIGHT, CANVAS_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH } from './constants.js';
 
-export function integerScale(viewportWidth, viewportHeight) {
-  return Math.max(1, Math.floor(Math.min(viewportWidth / CANVAS_WIDTH, viewportHeight / CANVAS_HEIGHT)));
+export function displaySteps(viewportWidth, viewportHeight) {
+  return Math.max(1, Math.floor(Math.min(viewportWidth / SCREEN_WIDTH, viewportHeight / SCREEN_HEIGHT)));
 }
 
 export function createScreen(canvas) {
@@ -10,9 +10,9 @@ export function createScreen(canvas) {
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
   function fit() {
-    const scale = integerScale(window.innerWidth, window.innerHeight);
-    canvas.style.width = `${CANVAS_WIDTH * scale}px`;
-    canvas.style.height = `${CANVAS_HEIGHT * scale}px`;
+    const steps = displaySteps(window.innerWidth, window.innerHeight);
+    canvas.style.width = `${SCREEN_WIDTH * steps}px`;
+    canvas.style.height = `${SCREEN_HEIGHT * steps}px`;
   }
   window.addEventListener('resize', fit);
   fit();
