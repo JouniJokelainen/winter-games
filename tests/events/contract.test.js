@@ -21,14 +21,14 @@ function playAttempt(eventId, attemptNumber) {
 }
 
 test('every registered event produces attempts the server accepts', () => {
-  let validSlalomAttempts = 0;
+  const validAttempts = { skiJump: 0, slalom: 0 };
   for (let round = 0; round < 20; round++) {
     const competition = new Competition('AKU');
     for (const eventId of competition.eventIds) {
       assert.ok(EVENTS[eventId], `${eventId} is registered`);
       for (let n = 1; n <= ATTEMPTS_PER_EVENT; n++) {
         const attempt = playAttempt(eventId, n);
-        if (eventId === 'slalom' && attempt.valid) validSlalomAttempts += 1;
+        if (attempt.valid && eventId in validAttempts) validAttempts[eventId] += 1;
         competition.recordAttempt(attempt);
       }
       competition.advance();
@@ -36,5 +36,7 @@ test('every registered event produces attempts the server accepts', () => {
     const check = validateResult(competition.toPayload());
     assert.equal(check.ok, true, JSON.stringify(check));
   }
-  assert.ok(validSlalomAttempts > 0, 'at least one valid slalom attempt reached the server check');
+  for (const [eventId, count] of Object.entries(validAttempts)) {
+    assert.ok(count > 0, `at least one valid ${eventId} attempt reached the server check`);
+  }
 });

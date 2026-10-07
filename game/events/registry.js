@@ -1,4 +1,5 @@
 import { PlaceholderEventScene } from './placeholderEvent.js';
+import { SkiJumpScene } from './skiJump/skiJumpScene.js';
 import { SlalomScene } from './slalom/slalomScene.js';
 
 function placeholder(id, name) {
@@ -10,7 +11,7 @@ export const EVENTS = {
     id: 'skiJump',
     name: 'MÄKIHYPPY',
     instructions: ['VÄLILYÖNTI = LÄHTÖ, PONNISTUS', 'JA ALASTULO', 'NUOLET = LENTOASENTO'],
-    createScene: placeholder('skiJump', 'MÄKIHYPPY'),
+    createScene: (options) => new SkiJumpScene(options),
   },
   slalom: {
     id: 'slalom',

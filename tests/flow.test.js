@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SceneManager } from '../game/engine/sceneManager.js';
 import { createFlow } from '../game/flow.js';
+import { SkiJumpScene } from '../game/events/skiJump/skiJumpScene.js';
 import { SlalomScene } from '../game/events/slalom/slalomScene.js';
 import { inputForEvent } from './helpers/eventDrivers.js';
 import { fakeInput } from './helpers/fakeInput.js';
@@ -29,7 +30,9 @@ const flush = () => new Promise((resolve) => setImmediate(resolve));
 // Drives the current event scene (per-event driver) until it hands over to the result screen.
 function finishAttempt(game) {
   const eventScene = game.scenes.current;
-  const eventId = eventScene instanceof SlalomScene ? 'slalom' : 'other';
+  let eventId = 'other';
+  if (eventScene instanceof SkiJumpScene) eventId = 'skiJump';
+  else if (eventScene instanceof SlalomScene) eventId = 'slalom';
   for (let i = 0; i < 60 * 120 && game.scenes.current === eventScene; i++) {
     game.scenes.update(1 / 60, inputForEvent(eventId, eventScene, i));
   }
@@ -66,7 +69,7 @@ test('escape opens the pause menu in an event and LOPETA returns to title', () =
   tick(game, ['Space']);                 // HARJOITTELU
   tick(game, ['Space']);                 // MÄKIHYPPY
   tick(game, ['Space']);                 // practice intro
-  assert.equal(game.scenes.current.constructor.name, 'PlaceholderEventScene');
+  assert.equal(game.scenes.current.constructor.name, 'SkiJumpScene');
   assert.equal(flow.handleGlobalKeys(fakeInput(['Escape'])), true);
   assert.equal(game.scenes.current.constructor.name, 'PauseScene');
   tick(game, ['ArrowDown']);
