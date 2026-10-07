@@ -16,6 +16,11 @@ Deferred findings from the foundation reviews. Each event plan picks up the item
 ## Ski jump and luge plans (both)
 - Add the event's bot driver to `tests/helpers/eventDrivers.js` (`inputForEvent`) and extend `finishAttempt` in `tests/flow.test.js`, which currently detects only `SlalomScene`.
 
+## After the ski jump: playable on GitHub Pages (user decision 2026-10-07)
+- Publish the game itself on GitHub Pages (e.g. `docs/peli/`, or a GitHub Actions deploy) so it runs in a browser without installing Node.
+- Add a `localStorage` score repository used when the local Node server is not available: results stay in the player's own browser, no shared leaderboard, no API keys.
+- Competitions for the shared leaderboard are still played locally through the Node server (`npm start`).
+
 ## Any time
 - Flow tests: save failure and retry, nickname load failure, resume from pause.
 - Add a fixed-stepper test where clamping leaves a remainder (`createFixedStepper`).
