@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { COURSE, COURSE_CENTER_X } from '../../../game/events/slalom/course.js';
 
-test('course has 20 poles alternating red-left and blue-right', () => {
-  assert.equal(COURSE.poles.length, 20);
+test('course has 23 poles alternating red-left and blue-right', () => {
+  assert.equal(COURSE.poles.length, 23);
   COURSE.poles.forEach((pole, index) => {
     assert.equal(pole.side, index % 2 === 0 ? 'left' : 'right');
     assert.equal(pole.color, pole.side === 'left' ? 'red' : 'blue');

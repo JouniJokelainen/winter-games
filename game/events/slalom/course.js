@@ -1,14 +1,15 @@
 export const COURSE_CENTER_X = 160;
 
-const FIRST_POLE_Y = 300;
-const FINISH_STRAIGHT = 320;
+const FIRST_POLE_Y = 140;
+const FINISH_STRAIGHT = 210;
 
-// Rhythm: wide warm-up, tight fast middle, offset turns that punish speed, steady finish.
+// Rhythm: warm-up, tight fast middle, offset turns that punish speed, steady finish. 23 poles; the
+// sideways offsets are kept small so the bots' target times (about 30 s excellent, 33-36 s average) hold.
 const SECTIONS = [
-  { count: 5, spacing: 230, offset: 26, shifts: [0] },
-  { count: 7, spacing: 170, offset: 20, shifts: [0] },
-  { count: 4, spacing: 230, offset: 30, shifts: [-30, -30, 30, 30] },
-  { count: 4, spacing: 210, offset: 24, shifts: [0] },
+  { count: 6, spacing: 200, offset: 20, shifts: [0] },
+  { count: 8, spacing: 150, offset: 16, shifts: [0] },
+  { count: 4, spacing: 215, offset: 23, shifts: [-23, -23, 23, 23] },
+  { count: 5, spacing: 190, offset: 19, shifts: [0] },
 ];
 
 function buildPoles() {
