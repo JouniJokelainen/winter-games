@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   applyResult, emptyBoard, RECENT_LIMIT, topTotals, validateResult,
-} from '../../server/leaderboard.js';
+} from '../../game/core/leaderboard.js';
 
 function makeResult(nickname, [skiJump, slalom, luge]) {
   return {

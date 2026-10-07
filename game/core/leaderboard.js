@@ -1,6 +1,6 @@
 import {
   EVENT_IDS, isValidNickname, MAX_POINTS, METRIC_KEY, normalizeNickname, SKI_JUMP_MAX_DISTANCE,
-} from '../game/core/rules.js';
+} from './rules.js';
 
 export const RECENT_LIMIT = 20;
 export const TOP_LIMIT = 10;

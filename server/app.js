@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { extname, normalize, resolve, sep } from 'node:path';
-import { applyResult, validateResult } from './leaderboard.js';
+import { applyResult, validateResult } from '../game/core/leaderboard.js';
 import { loadBoard, saveBoard } from './leaderboardStore.js';
 
 const MIME_TYPES = {

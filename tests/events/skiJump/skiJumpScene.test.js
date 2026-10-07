@@ -6,7 +6,7 @@ import { EVENTS } from '../../../game/events/registry.js';
 import { HILL } from '../../../game/events/skiJump/hill.js';
 import { buildAttempt, drawWind, FINISH_HOLD_SECONDS, SkiJumpScene } from '../../../game/events/skiJump/skiJumpScene.js';
 import { createJumpState } from '../../../game/events/skiJump/skiJumpSim.js';
-import { validateResult } from '../../../server/leaderboard.js';
+import { validateResult } from '../../../game/core/leaderboard.js';
 import { fakeInput } from '../../helpers/fakeInput.js';
 import { BOTS, botInput } from '../../helpers/skiJumpBot.js';
 

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { emptyBoard } from '../../server/leaderboard.js';
+import { emptyBoard } from '../../game/core/leaderboard.js';
 import { loadBoard, saveBoard } from '../../server/leaderboardStore.js';
 
 async function tempDir(t) {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { Competition } from '../../game/core/competition.js';
 import { ATTEMPTS_PER_EVENT } from '../../game/core/rules.js';
 import { EVENTS } from '../../game/events/registry.js';
-import { validateResult } from '../../server/leaderboard.js';
+import { validateResult } from '../../game/core/leaderboard.js';
 import { inputForEvent } from '../helpers/eventDrivers.js';
 
 function playAttempt(eventId, attemptNumber) {

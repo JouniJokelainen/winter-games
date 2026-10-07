@@ -1,5 +1,5 @@
 import { readFile, rename, writeFile } from 'node:fs/promises';
-import { emptyBoard } from './leaderboard.js';
+import { emptyBoard } from '../game/core/leaderboard.js';
 
 export async function loadBoard(path) {
   try {
