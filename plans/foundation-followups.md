@@ -15,10 +15,10 @@ Deferred findings from the foundation reviews. Each event plan picks up the item
 ## Luge plan (event drivers)
 - Add the luge bot driver to `tests/helpers/eventDrivers.js` (`inputForEvent`) and extend `finishAttempt` in `tests/flow.test.js` (it recognises `SkiJumpScene` and `SlalomScene`).
 
-## After the ski jump: playable on GitHub Pages (user decision 2026-10-07)
-- Publish the game itself on GitHub Pages (e.g. `docs/peli/`, or a GitHub Actions deploy) so it runs in a browser without installing Node.
-- Add a `localStorage` score repository used when the local Node server is not available: results stay in the player's own browser, no shared leaderboard, no API keys.
+## Playable on GitHub Pages (user decision 2026-10-07)
+- Planned and built in `plans/2026-10-08-pages-play.md`: the game is published under `peli/` by a GitHub Actions deploy, and results are stored in the player's own browser (`localStorage`) when the Node server is not available. No shared leaderboard, no API keys.
 - Competitions for the shared leaderboard are still played locally through the Node server (`npm start`).
+- Rollout (switching Pages from the legacy `docs/` build to Actions, first deploy) is done separately with the user's go-ahead.
 
 ## Any time
 - Flow tests: save failure and retry, nickname load failure, resume from pause.
