@@ -13,10 +13,10 @@ Retrohenkinen (Amiga/VGA-tyyli) talviurheilupeli, jossa on kolme lajia: mäkihyp
 - Koodiin tai tiedostoihin ei tallenneta avaimia eikä tokeneita.
 - Pelin puolella tallennus on rajapinnan takana (`ScoreRepository`: `getUser`, `saveResult`, `getLeaderboard`).
 - Tulokset julkaistaan GitHub Pagesissa:
-  - Repositorio on julkinen `JouniJokelainen/winter-games`, ja Pages julkaistaan `main`-haaran `docs/`-kansiosta.
+  - Repositorio on julkinen `JouniJokelainen/winter-games`, ja Pages julkaistaan GitHub Actionsilla: `docs/` sivuston juureen ja `game/` polkuun `peli/`.
   - Repositorio luodaan vasta käyttäjän erillisellä hyväksynnällä.
   - Pages-sivulla näytetään kymmenen parasta yhteispistemäärää, lajikohtaiset ennätykset ja viimeisimmät kilpailut samalla retrotyylillä ja paletilla kuin pelissä.
-  - Peliä pelataan vain paikallisesti, eikä peliä itseään julkaista Pagesissa.
+  - Peli on pelattavissa myös Pagesissa (`peli/`). Pagesissa tulokset tallentuvat pelaajan omaan selaimeen (`localStorage`), eikä niitä lähetetä yhteiselle tulostaululle. Yhteinen tulostaulu päivittyy vain paikallisesta pelistä Node-palvelimen kautta.
 - Grafiikka:
   - Sisäinen resoluutio on 320×256 (Amiga PAL), ja kuva skaalataan kokonaislukukertoimella.
   - Kaikki grafiikka piirretään koodilla (pikselitaulukot ja muodot), eikä kuvatiedostoja käytetä.

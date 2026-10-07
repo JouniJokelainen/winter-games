@@ -882,7 +882,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 
 1. Merge the branch into `main` locally and run `npm test`.
 2. Check the `gh` token has the `workflow` scope (`gh auth status`); if not, the user runs `! gh auth refresh -s workflow`.
-3. Push `main`.
-4. Switch the Pages source to GitHub Actions: `gh api -X PUT repos/JouniJokelainen/winter-games/pages -f build_type=workflow`.
-5. Trigger the workflow right away: `gh workflow run pages.yml`, then watch it with `gh run watch`.
+3. Switch the Pages source to GitHub Actions: `gh api -X PUT repos/JouniJokelainen/winter-games/pages -f build_type=workflow` (do this immediately before step 4; the site keeps serving until the first Actions deploy finishes, but confirm in the Pages settings).
+4. Push `main`: the push triggers the first deploy.
+5. Watch the run with `gh run watch`; if no run started, trigger it with `gh workflow run pages.yml`.
 6. Open `https://jounijokelainen.github.io/winter-games/` (the leaderboard with a PELAA link) and `…/peli/` (the game); play one competition and confirm `TULOS TALLENNETTU SELAIMEEN`.
