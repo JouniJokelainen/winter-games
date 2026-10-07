@@ -3,6 +3,8 @@
 // Local pose coordinates are pixels at the 640×512 canvas: x forward, y up, boots at (0, 0).
 // The bindings sit at the middle of the skis, so tails reach as far behind the boots as tips reach ahead.
 
+import { PALETTE } from '../../engine/palette.js';
+
 const DEG = Math.PI / 180;
 
 // ---- rasteriser -------------------------------------------------------------------------------
@@ -47,19 +49,19 @@ function shaded(light, dark, split = 0.35) {
 // Style C ("80s"): red helmet with pompom and goggles, blue suit with a bib, wooden skis.
 export const SKIER_STYLES = {
   classic: {
-    head: { color: '#f0b090' },
-    helmet: { color: '#d02020', shade: '#801010', pompom: '#d02020', goggles: '#202838', lens: '#e0a030' },
-    torsoTop: '#f2f2f6',
-    torso: '#2a50c0',
-    torsoShade: '#162c78',
-    arms: '#2a50c0',
-    gloves: '#d02020',
-    legs: '#1c2a6a',
-    legsShade: '#0e1640',
-    boots: '#202020',
-    ski: '#a8743a',
-    skiShade: '#6a4420',
-    bib: { color: '#f2f2f6', number: '#d02020' },
+    head: { color: PALETTE.skin },
+    helmet: { color: PALETTE.red, shade: PALETTE.darkRed, pompom: PALETTE.red, goggles: PALETTE.skierGoggleFrame, lens: PALETTE.skierLens },
+    torsoTop: PALETTE.skierBib,
+    torso: PALETTE.skierSuit,
+    torsoShade: PALETTE.skierSuitShade,
+    arms: PALETTE.skierSuit,
+    gloves: PALETTE.red,
+    legs: PALETTE.skierLegs,
+    legsShade: PALETTE.skierLegsShade,
+    boots: PALETTE.skierBoots,
+    ski: PALETTE.skierSki,
+    skiShade: PALETTE.skierSkiShade,
+    bib: { color: PALETTE.skierBib, number: PALETTE.red },
   },
 };
 
