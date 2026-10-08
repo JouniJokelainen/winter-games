@@ -188,3 +188,63 @@ test('the forest is deterministic and stays off the track', () => {
     }
   }
 });
+
+// Venue: spectator outfits are drawn in these colours (fog tints them slightly, so compare with a tolerance).
+// (the green outfit is left out: it is the colour of the trees)
+const OUTFIT_COLORS = [PALETTE.suitPink, PALETTE.guide, PALETTE.wood2, PALETTE.red];
+const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+const OUTFIT_RGB = OUTFIT_COLORS.map(rgb);
+const isOutfit = (color) => {
+  if (typeof color !== 'string' || !color.startsWith('#')) return false;
+  const c = rgb(color);
+  return OUTFIT_RGB.some((o) => Math.hypot(c[0] - o[0], c[1] - o[1], c[2] - o[2]) < 24);
+};
+const outfitRects = (view) => {
+  const ctx = recordingCtx();
+  renderLuge(ctx, view);
+  return ctx.rects.filter((r) => isOutfit(r.color) && r.y > 150 && r.y < 440);
+};
+
+test('the finish stands are full of spectators and the open straight has none', () => {
+  const finish = outfitRects({ ...BASE, s: 1050, phase: 'finished' }).length;
+  const straight = outfitRects({ ...BASE, s: 60 }).length;
+  assert.ok(finish > straight + 100, `finish ${finish} vs straight ${straight} spectator rects`);
+});
+
+test('the start stands are full of spectators in the ready frame', () => {
+  const ready = outfitRects({ ...BASE, s: -3.4, phase: 'push', showRedLine: true, stride: 0.25 }).length;
+  const straight = outfitRects({ ...BASE, s: 60 }).length;
+  assert.ok(ready > straight + 60, `ready ${ready} vs straight ${straight}`);
+});
+
+test('the spectators wave: two clock values change at least 20 spectator rects', () => {
+  const key = (r) => `${r.x},${r.y},${r.w},${r.h},${r.color}`;
+  for (const s of [1050, -3.4]) {
+    const view = { ...BASE, s, phase: s < 0 ? 'push' : 'finished', stride: 0.25 };
+    const a = new Set(outfitRects({ ...view, clock: 0 }).map(key));
+    const b = new Set(outfitRects({ ...view, clock: 0.25 }).map(key));
+    const changed = [...a].filter((k) => !b.has(k)).length + [...b].filter((k) => !a.has(k)).length;
+    assert.ok(changed >= 20, `${s}: ${changed} changed spectator rects`);
+  }
+});
+
+test('a small group of spectators stands on the outer side of turn 3', () => {
+  const crowd = outfitRects({ ...BASE, s: 288 });
+  const left = crowd.filter((r) => r.x + r.w / 2 < 320).length;
+  assert.ok(left >= 12, `${left} spectator rects on the outer (left) side`);
+});
+
+test('the clock falls back to time and then to zero', () => {
+  const ctx = recordingCtx();
+  assert.doesNotThrow(() => renderLuge(ctx, { ...BASE, time: undefined, s: 1050 }));
+});
+
+test('the venue frames draw whole pixels without the retro colours', () => {
+  for (const s of [-3.4, 12, 288, 330, 500, 625, 1000, 1050, 1070]) {
+    const ctx = recordingCtx();
+    renderLuge(ctx, { ...BASE, s, clock: s / 7 });
+    for (const r of ctx.rects) assert.ok([r.x, r.y, r.w, r.h].every(Number.isInteger), `${s} ${JSON.stringify(r)}`);
+    const used = new Set(ctx.rects.map((r) => r.color));
+    for (const color of RETRO_COLORS) assert.ok(!used.has(color), `${s} uses ${color}`);
+  }
+});
