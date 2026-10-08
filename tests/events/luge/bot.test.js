@@ -64,3 +64,9 @@ test('holding a steering key crashes into the rim', () => {
   assert.equal(state.phase, 'crashed');
   assert.equal(state.reason, 'wall');
 });
+
+test('a careless player with a wide steering tolerance and a short look-ahead still finishes', () => {
+  const state = runBot(BOTS.careless);
+  assert.equal(state.phase, 'finished');
+  assert.ok(state.time > 30 && state.time < 34, `careless took ${state.time}`);
+});

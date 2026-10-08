@@ -3,7 +3,7 @@ import { ATTEMPTS_PER_EVENT } from '../../core/rules.js';
 import { lugePoints } from '../../core/scoring.js';
 import { SLED_Z } from './lugeProjection.js';
 import { renderLuge } from './lugeRender.js';
-import { createLugeState, speedLimitAhead, stepLuge } from './lugeSim.js';
+import { createLugeState, speedLimitAtLateral, stepLuge } from './lugeSim.js';
 import { turnNumber } from './lugeTrack.js';
 
 export const FINISH_HOLD_SECONDS = 1;
@@ -85,7 +85,8 @@ export class LugeScene {
   }
 
   limit() {
-    return this.state.phase === 'running' ? speedLimitAhead(this.state.s, LIMIT_LOOK_AHEAD) : Infinity;
+    const { state } = this;
+    return state.phase === 'running' ? speedLimitAtLateral(state.s, LIMIT_LOOK_AHEAD, state.lateral) : Infinity;
   }
 
   isWarning() {

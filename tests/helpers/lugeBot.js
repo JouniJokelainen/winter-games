@@ -4,14 +4,14 @@ import { fakeInput } from './fakeInput.js';
 
 // pushEvery: ticks between taps; look: metres of track watched for the speed limit; margin: share of the limit the
 // bot is willing to carry into a turn; outer: how far toward the outer side it steers in a turn (0 = centre); it also assumes that
-// position when it computes the speed limit.
+// position when it computes the speed limit; dead: how far from the target position the bot lets the sled wander before steering back.
 export const BOTS = {
-  good: { pushEvery: 7, look: 120, margin: 0.97, outer: 0.35 },
-  centre: { pushEvery: 7, look: 120, margin: 0.97, outer: 0 },
-  average: { pushEvery: 14, look: 60, margin: 0.8, outer: 0.2 },
+  good: { pushEvery: 7, look: 120, margin: 0.97, outer: 0.35, dead: 0.04 },
+  centre: { pushEvery: 7, look: 120, margin: 0.97, outer: 0, dead: 0.04 },
+  average: { pushEvery: 14, look: 60, margin: 0.8, outer: 0.2, dead: 0.04 },
+  careless: { pushEvery: 9, look: 50, margin: 0.9, outer: 0.1, dead: 0.12 },
 };
 
-const STEER_DEADBAND = 0.04;
 const TURN_CURVATURE = 0.004;
 
 export function botControls(state, profile, tick) {
@@ -21,8 +21,8 @@ export function botControls(state, profile, tick) {
   const k = curvatureAt(state.s);
   const target = Math.abs(k) > TURN_CURVATURE ? -Math.sign(k) * profile.outer : 0;
   return {
-    left: state.lateral > target + STEER_DEADBAND,
-    right: state.lateral < target - STEER_DEADBAND,
+    left: state.lateral > target + profile.dead,
+    right: state.lateral < target - profile.dead,
     down: state.v > speedLimitAhead(state.s, profile.look, profile.outer) * profile.margin,
     pushes: 0,
   };

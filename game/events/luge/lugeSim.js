@@ -6,16 +6,17 @@ export const LUGE_CONFIG = {
   pushDecay: 0.8, // speed lost per second while pushing
   pushMin: 1, // the runner never stops walking
   pushMax: 4,
-  gravity: 9.3,
+  gravity: 7.8,
   drag: 0.0022,
-  brake: 15,
+  brake: 22,
   lateralRate: 2.6, // lateral units per second while an arrow is held
   straightReturn: 0.4, // lateral units per second back to the centre on a straight with no arrow held
   driftGain: 0.025, // outward slide in a turn: lateral units per second = driftGain · v² · |k|
   turnGain: 8, // speed change (m/s²) at kMax with the sled fully on the outer (+) or inner (-) side
   kMax: 0.045,
-  safeA: 48, // vSafe(k) = sqrt(safeA / |k|) on the centre line
-  outerSafe: 0.4, // the safe speed grows by this share on the outer side and shrinks on the inner side
+  safeA: 56, // vSafe(k) = sqrt(safeA / |k|) on the centre line
+  outerSafe: 0.4, // the safe speed grows by this share on the fully outer side
+  innerSafe: 0.2, // and shrinks by this share on the fully inner side
   kSafeMin: 0.004, // gentler curves have no speed limit and no drift
   lookStep: 5,
   timeLimit: 45, // a run still going after this many seconds is rejected
@@ -27,7 +28,8 @@ function outerSide(k, lateral) {
 }
 
 export function vSafeOuter(k, outer) {
-  return Math.sqrt(LUGE_CONFIG.safeA / Math.abs(k)) * (1 + LUGE_CONFIG.outerSafe * outer);
+  const share = outer >= 0 ? LUGE_CONFIG.outerSafe : LUGE_CONFIG.innerSafe;
+  return Math.sqrt(LUGE_CONFIG.safeA / Math.abs(k)) * (1 + share * outer);
 }
 
 export function vSafe(k, lateral = 0) {
@@ -41,6 +43,16 @@ export function speedLimitAhead(s, distance, outer = 0) {
   for (let d = 0; d <= distance; d += LUGE_CONFIG.lookStep) {
     const k = curvatureAt(s + d);
     if (Math.abs(k) > LUGE_CONFIG.kSafeMin) limit = Math.min(limit, vSafeOuter(k, outer));
+  }
+  return limit;
+}
+
+// Lowest safe speed over the next `distance` metres if the sled stays at `lateral`; Infinity when no turn is in range.
+export function speedLimitAtLateral(s, distance, lateral) {
+  let limit = Infinity;
+  for (let d = 0; d <= distance; d += LUGE_CONFIG.lookStep) {
+    const k = curvatureAt(s + d);
+    if (Math.abs(k) > LUGE_CONFIG.kSafeMin) limit = Math.min(limit, vSafe(k, lateral));
   }
   return limit;
 }

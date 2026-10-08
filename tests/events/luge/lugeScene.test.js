@@ -115,3 +115,13 @@ test('the label shows the attempt, and rendering works in every phase', () => {
     assert.ok(ctx.rects.length > 2000, `${patch.phase}: ${ctx.rects.length} rects`);
   }
 });
+
+test('the speed limit shown follows the lateral position of the sled', () => {
+  const { scene } = makeScene();
+  Object.assign(scene.state, { phase: 'running', s: 60, v: 30 }); // the first turn (a right turn) is ahead
+  scene.state.lateral = -0.8; // outer side of that turn
+  const outer = scene.limit();
+  scene.state.lateral = 0.8; // inner side
+  const inner = scene.limit();
+  assert.ok(outer > inner, `${outer} ${inner}`);
+});
