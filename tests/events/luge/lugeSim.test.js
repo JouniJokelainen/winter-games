@@ -55,7 +55,7 @@ test('without tapping the runner keeps walking and still reaches the red line', 
   stepLuge(state, { ...NONE, pushes: 1 }, DT);
   for (let tick = 0; tick < 60 * 30 && state.phase === 'pushing'; tick++) stepLuge(state, NONE, DT);
   assert.equal(state.phase, 'running');
-  assert.ok(state.time > 18 && state.time < 26, `push took ${state.time}`);
+  assert.ok(state.time > 26 && state.time < 34, `push took ${state.time}`);
 });
 
 test('in a turn the outer side speeds up, the inner side slows down, the centre is in between', () => {

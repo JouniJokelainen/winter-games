@@ -2,10 +2,10 @@ import { curvatureAt, FINISH_S, RED_LINE_S } from './lugeTrack.js';
 
 // Distances in metres, speeds in m/s. Tuned with the bot test (tests/events/luge/bot.test.js).
 export const LUGE_CONFIG = {
-  pushGain: 1, // speed added per Space press while pushing
+  pushGain: 1.3, // speed added per Space press while pushing
   pushRate: 1.6, // share of the speed lost per second while pushing: the speed settles at taps per second · pushGain / pushRate
   pushMin: 1, // the runner never stops walking
-  pushMax: 8,
+  pushMax: 12,
   gravity: 11,
   drag: 0.0022,
   brake: 22,
