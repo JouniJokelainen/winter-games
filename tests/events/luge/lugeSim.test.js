@@ -1,0 +1,146 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { FINISH_S, RED_LINE_S, TURNS } from '../../../game/events/luge/lugeTrack.js';
+import { createLugeState, LUGE_CONFIG, speedLimitAhead, stepLuge, vSafe } from '../../../game/events/luge/lugeSim.js';
+
+const DT = 1 / 60;
+const NONE = { left: false, right: false, down: false, pushes: 0 };
+// s = 130 is inside the first turn at full curvature: a right turn, so its outer side is the left (lateral < 0).
+const MID_FIRST_TURN = 130;
+const TIGHTEST_TURN = 670;
+
+function running(overrides = {}) {
+  return Object.assign(createLugeState(), { phase: 'running', s: MID_FIRST_TURN, v: 30 }, overrides);
+}
+
+test('stays ready until the first push, then starts pushing', () => {
+  const state = createLugeState();
+  stepLuge(state, NONE, DT);
+  assert.equal(state.phase, 'ready');
+  assert.equal(state.time, 0);
+  stepLuge(state, { ...NONE, pushes: 1 }, DT);
+  assert.equal(state.phase, 'pushing');
+  assert.deepEqual(state.events, [{ type: 'start' }]);
+  assert.ok(state.v >= LUGE_CONFIG.pushMin);
+});
+
+test('pushes raise the speed up to the cap and it decays without them', () => {
+  const state = Object.assign(createLugeState(), { phase: 'pushing', v: 2 });
+  stepLuge(state, { ...NONE, pushes: 1 }, DT);
+  assert.ok(state.v > 2 + LUGE_CONFIG.pushImpulse - 0.05);
+  stepLuge(state, { ...NONE, pushes: 50 }, DT);
+  assert.equal(state.v, LUGE_CONFIG.pushMax);
+  const before = state.v;
+  stepLuge(state, NONE, DT);
+  assert.ok(state.v < before);
+  for (let i = 0; i < 600 && state.phase === 'pushing'; i++) stepLuge(state, NONE, DT);
+  assert.ok(state.v >= LUGE_CONFIG.pushMin);
+});
+
+test('the push ends at the red line and the push speed carries on to the slope', () => {
+  const state = createLugeState();
+  let hopSpeed = 0;
+  for (let tick = 0; tick < 60 * 30 && state.phase !== 'running'; tick++) {
+    stepLuge(state, { ...NONE, pushes: tick % 7 === 0 ? 1 : 0 }, DT);
+    if (state.events.some((event) => event.type === 'hop')) hopSpeed = state.v;
+  }
+  assert.equal(state.phase, 'running');
+  assert.ok(state.s >= RED_LINE_S);
+  assert.ok(hopSpeed > 2);
+  assert.ok(state.time > 3 && state.time < 6, `push took ${state.time}`);
+});
+
+test('without tapping the runner keeps walking and still reaches the red line', () => {
+  const state = createLugeState();
+  stepLuge(state, { ...NONE, pushes: 1 }, DT);
+  for (let tick = 0; tick < 60 * 30 && state.phase === 'pushing'; tick++) stepLuge(state, NONE, DT);
+  assert.equal(state.phase, 'running');
+  assert.ok(state.time > 12 && state.time < 18, `push took ${state.time}`);
+});
+
+test('in a turn the outer side speeds up, the inner side slows down, the centre is in between', () => {
+  const after = (lateral) => {
+    const state = running({ lateral });
+    stepLuge(state, NONE, DT);
+    return state.v;
+  };
+  const outer = after(-0.6);
+  const centre = after(0);
+  const inner = after(0.6);
+  assert.ok(outer > centre && centre > inner, `${outer} ${centre} ${inner}`);
+});
+
+test('lateral position has no effect on speed on a straight', () => {
+  const after = (lateral) => {
+    const state = running({ s: 40, lateral });
+    stepLuge(state, NONE, DT);
+    return state.v;
+  };
+  assert.equal(after(-0.6), after(0.6));
+});
+
+test('the arrows move the sled sideways and it eases back to the centre', () => {
+  const state = running({ s: 40 });
+  for (let i = 0; i < 20; i++) stepLuge(state, { ...NONE, right: true }, DT);
+  assert.ok(state.lateral > 0.4);
+  const held = state.lateral;
+  for (let i = 0; i < 20; i++) stepLuge(state, NONE, DT);
+  assert.ok(state.lateral < held && state.lateral >= 0);
+  for (let i = 0; i < 240; i++) stepLuge(state, NONE, DT);
+  assert.equal(state.lateral, 0);
+});
+
+test('braking slows the sled', () => {
+  const free = running({ s: 40 });
+  const braked = running({ s: 40 });
+  stepLuge(free, NONE, DT);
+  stepLuge(braked, { ...NONE, down: true }, DT);
+  assert.ok(braked.v < free.v);
+});
+
+test('touching the rim is a crash', () => {
+  const state = running({ s: 40, lateral: 0.99 });
+  stepLuge(state, { ...NONE, right: true }, DT);
+  assert.equal(state.phase, 'crashed');
+  assert.equal(state.reason, 'wall');
+  assert.equal(state.lateral, 1);
+  assert.deepEqual(state.events, [{ type: 'crash' }]);
+});
+
+test('too much speed in a turn is a crash, a safe speed is not', () => {
+  const k = TURNS[6].k;
+  const limit = vSafe(k);
+  assert.ok(limit > 36 && limit < 42, `vSafe(${k}) = ${limit}`);
+  const fast = running({ s: TIGHTEST_TURN, v: limit + 5 });
+  stepLuge(fast, NONE, DT);
+  assert.equal(fast.phase, 'crashed');
+  assert.equal(fast.reason, 'speed');
+  const safe = running({ s: TIGHTEST_TURN, v: limit - 5 });
+  stepLuge(safe, NONE, DT);
+  assert.equal(safe.phase, 'running');
+});
+
+test('speedLimitAhead finds the tightest turn in range', () => {
+  assert.equal(speedLimitAhead(0, 50), Infinity);
+  assert.equal(speedLimitAhead(TIGHTEST_TURN - 10, 20), vSafe(TURNS[6].k));
+  assert.ok(speedLimitAhead(600, 120) <= vSafe(TURNS[6].k));
+});
+
+test('crossing the finish line ends the run with an interpolated time', () => {
+  const state = running({ s: FINISH_S - 0.1, v: 40, time: 29.9 });
+  stepLuge(state, NONE, DT);
+  assert.equal(state.phase, 'finished');
+  assert.equal(state.s, FINISH_S);
+  assert.deepEqual(state.events, [{ type: 'finish' }]);
+  assert.ok(state.time > 29.9 && state.time < 29.9 + DT);
+});
+
+test('a finished or crashed run no longer changes', () => {
+  for (const phase of ['finished', 'crashed']) {
+    const state = running({ phase, s: 500, time: 20 });
+    stepLuge(state, { ...NONE, right: true, pushes: 3 }, DT);
+    assert.equal(state.s, 500);
+    assert.equal(state.time, 20);
+    assert.deepEqual(state.events, []);
+  }
+});
