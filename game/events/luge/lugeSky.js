@@ -123,14 +123,25 @@ function ridgeHeight(ridge, m) {
   return ridge.base + ridge.amp * (0.6 * a + 0.28 * b + 0.12 * c);
 }
 
+// Heights memoised per integer position (the ridges slide in whole pixels anyway).
+const TABLE_OFFSET = 8192;
+function cachedHeight(ridge, m) {
+  const i = m + TABLE_OFFSET;
+  if (i < 0 || i >= 2 * TABLE_OFFSET) return ridgeHeight(ridge, m);
+  const table = ridge.table ?? (ridge.table = new Float64Array(2 * TABLE_OFFSET).fill(NaN));
+  const cached = table[i];
+  if (cached === cached) return cached;
+  return (table[i] = ridgeHeight(ridge, m));
+}
+
 function drawRidges(ctx, heading, horizon) {
   for (const ridge of RIDGES) {
-    const shift = heading * 600 * ridge.par;
+    const shift = Math.round(heading * 600 * ridge.par);
     const capLine = ridge.base + ridge.amp * 0.3; // heights above this carry snow
     for (let sx = 0; sx < W; sx += ridge.step) {
       const m = sx + shift;
-      const h = ridgeHeight(ridge, m);
-      const slope = ridgeHeight(ridge, m + 5) - ridgeHeight(ridge, m - 5);
+      const h = cachedHeight(ridge, m);
+      const slope = cachedHeight(ridge, m + 5) - cachedHeight(ridge, m - 5);
       const top = horizon - Math.round(h);
       const width = Math.min(ridge.step, W - sx);
       const bottom = horizon - top;
