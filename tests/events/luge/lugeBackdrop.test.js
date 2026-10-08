@@ -4,57 +4,8 @@ import { drawCachedBackdrop } from '../../../game/events/luge/lugeBackdrop.js';
 import { drawForestBackdrop } from '../../../game/events/luge/lugeForest.js';
 import { HORIZON } from '../../../game/events/luge/lugeProjection.js';
 import { drawLugeSky } from '../../../game/events/luge/lugeSky.js';
+import { PixelSurface as Surface } from '../../helpers/pixelSurface.js';
 import { recordingCtx } from '../../helpers/recordingCtx.js';
-
-// A small RGBA float surface with source-over fillRect (hex or rgba colours) and unscaled whole-pixel drawImage.
-class Surface {
-  constructor(width, height) {
-    this.width = width;
-    this.height = height;
-    this.px = new Float32Array(width * height * 4);
-    this.fillStyle = '#000000';
-    this.calls = { rects: 0, images: 0 };
-  }
-
-  getContext() {
-    return this;
-  }
-
-  blend(i, r, g, b, a) {
-    const px = this.px;
-    px[i] = px[i] * (1 - a) + r * a;
-    px[i + 1] = px[i + 1] * (1 - a) + g * a;
-    px[i + 2] = px[i + 2] * (1 - a) + b * a;
-    px[i + 3] = px[i + 3] * (1 - a) + a;
-  }
-
-  fillRect(x, y, w, h) {
-    this.calls.rects += 1;
-    const style = this.fillStyle;
-    const [r, g, b, a] = style.startsWith('#')
-      ? [...[1, 3, 5].map((i) => parseInt(style.slice(i, i + 2), 16)), 1]
-      : style.match(/[\d.]+/g).map(Number);
-    for (let yy = Math.max(0, y); yy < Math.min(this.height, y + h); yy++) {
-      for (let xx = Math.max(0, x); xx < Math.min(this.width, x + w); xx++) this.blend((yy * this.width + xx) * 4, r, g, b, a);
-    }
-  }
-
-  drawImage(img, ...args) {
-    this.calls.images += 1;
-    const [sx, sy, sw, sh, dx, dy] = args.length === 2 ? [0, 0, img.width, img.height, ...args] : args;
-    assert.ok([sx, sy, dx, dy].every(Number.isInteger), `whole-pixel drawImage ${args}`);
-    if (args.length > 2) assert.deepEqual([args[6], args[7]], [sw, sh], 'unscaled drawImage');
-    for (let y = 0; y < sh; y++) {
-      for (let x = 0; x < sw; x++) {
-        const [tx, ty, fx, fy] = [dx + x, dy + y, sx + x, sy + y];
-        if (tx < 0 || ty < 0 || tx >= this.width || ty >= this.height || fx < 0 || fy < 0 || fx >= img.width || fy >= img.height) continue;
-        const si = (fy * img.width + fx) * 4;
-        const a = img.px[si + 3];
-        if (a > 0) this.blend((ty * this.width + tx) * 4, img.px[si] / a, img.px[si + 1] / a, img.px[si + 2] / a, a);
-      }
-    }
-  }
-}
 
 const W = 640;
 const tint = (color) => color;

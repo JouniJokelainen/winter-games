@@ -7,6 +7,7 @@ import { PALETTE } from '../../engine/palette.js';
 import { createRng } from '../../engine/rng.js';
 import { drawSnowfall } from '../../engine/scenery.js';
 import { drawCachedBackdrop } from './lugeBackdrop.js';
+import { createRowBuffer } from './lugeRowBuffer.js';
 import { drawForestBackdrop, drawLugePine, forestObjects } from './lugeForest.js';
 import { lineOverlay, paintRuns, runsCover, SAMPLES } from './lugeLines.js';
 import { drawLugeSky } from './lugeSky.js';
@@ -360,11 +361,13 @@ function drawObject(ctx, object, look, s, clock) {
 // ---- track rows ---------------------------------------------------------------------------------
 
 // A drawing context for a trackside object at distance z: pixels that fall inside the trough/rim silhouette of a
-// row are skipped when the object is farther away than the rim there (the rim is in front of it).
-function maskedCtx(ctx, z, clip) {
+// row are skipped when the object is farther away than the rim there (the rim is in front of it). Rows below
+// `maxRow` are skipped too (with the row buffer, where the later rows that would cover them are already drawn).
+function maskedCtx(ctx, z, clip, maxRow = Infinity) {
   return {
     fillStyle: '#000',
-    fillRect(x, y, w, h) {
+    fillRect(x, y, w, rawH) {
+      const h = Math.min(rawH, maxRow + 1 - y);
       if (h <= 0) return;
       ctx.fillStyle = this.fillStyle;
       // Fast path: when no row of the rect meets the rim silhouette, it is one plain rect.
@@ -380,19 +383,104 @@ function maskedCtx(ctx, z, clip) {
         ctx.fillRect(x, y, w, h);
         return;
       }
+      // Visible part left of the silhouette and right of it, per row; rows with the same parts are merged into
+      // one taller rect (a narrow post crossing the rim is a few rects, not one per row).
+      let runY = y;
+      let runA = null;
+      let runB = null;
+      const flush = (end) => {
+        if (runA) ctx.fillRect(runA[0], runY, runA[1], end - runY);
+        if (runB) ctx.fillRect(runB[0], runY, runB[1], end - runY);
+      };
       for (let row = y; row < y + h; row++) {
         const c = clip[row];
+        let a = null;
+        let b = null;
         if (!c || z <= c.z) {
-          ctx.fillRect(x, row, w, 1);
+          a = [x, w];
         } else {
           const left = Math.round(c.left);
           const right = Math.round(c.right);
-          if (x < left) ctx.fillRect(x, row, Math.min(x + w, left) - x, 1);
-          if (x + w > right) ctx.fillRect(Math.max(x, right), row, x + w - Math.max(x, right), 1);
+          if (x < left) a = [x, Math.min(x + w, left) - x];
+          if (x + w > right) b = [Math.max(x, right), x + w - Math.max(x, right)];
         }
+        const same = (p, q) => (p === null ? q === null : q !== null && p[0] === q[0] && p[1] === q[1]);
+        if (row > y && same(a, runA) && same(b, runB)) continue;
+        flush(row);
+        runY = row;
+        runA = a;
+        runB = b;
       }
+      flush(y + h);
     },
   };
+}
+
+// The opaque base of one screen row, covering its full width: snow, ice, rims, padding, lips, grooves and the
+// racing line. Returns the line marks of the row and its rim silhouette, or null beyond the track.
+function drawRowBase(ctx, y, s, look, view, lines) {
+  const dy = y - HORIZON;
+  const z = (CAM_H * FOCAL) / dy;
+  const fog = clamp((z - FOG_START) / FOG_SPAN, 0, 1);
+  const tint = (color) => mix(color, FOG_TARGET, fog);
+  const along = s + z;
+  fillRow(ctx, 0, W, y, tint(Math.floor(along / 8) % 2 === 0 ? PALETTE.snowLight : PALETTE.snowMid));
+
+  if (z < MAX_Z - 1) {
+    const bank = bankFor(sample(look.K, z));
+    // Project the cross-section: every sample sits at its own distance because higher points are nearer.
+    const points = SAMPLE_XS.map((x) => {
+      const h = profileHeight(x, bank);
+      const zi = ((CAM_H - h) * FOCAL) / dy;
+      return { x, z: zi, sx: W / 2 + (sample(look.L, zi) + x) * (FOCAL / zi) };
+    });
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i];
+      const b = points[i + 1];
+      if (b.sx <= a.sx) continue;
+      const midX = (a.x + b.x) / 2;
+      const midZ = (a.z + b.z) / 2;
+      const midAlong = s + midZ;
+      const spanFog = clamp((midZ - FOG_START) / FOG_SPAN, 0, 1);
+      const rim = Math.abs(midX) > HALF_W;
+      const color = rim
+        ? RIM_COLOR
+        : iceColor(profileSlope(midX, bank), Math.abs(midX) / HALF_W, Math.floor(midAlong / 5) % 2 === 0);
+      fillRow(ctx, a.sx, b.sx, y, mix(color, rim ? FOG_TARGET : ICE_FOG, spanFog));
+    }
+    // Rim outline and the two runner grooves in the bottom of the trough.
+    const left = points[0];
+    const right = points.at(-1);
+    drawPadding(ctx, look, bank, dy, s, y, bank > 0 ? left.sx : right.sx);
+    drawLip(ctx, y, left.sx, points[1].sx, -1, tint);
+    drawLip(ctx, y, right.sx, points.at(-2).sx, 1, tint);
+    // Start line, hop band and finish checker on this row: strictly inside the lip shadows, painted last.
+    const marks = lines === null ? null : lines.row(y, lipInner(left.sx, points[1].sx, -1) + 1, lipInner(right.sx, points.at(-2).sx, 1) - 2, bank);
+    for (const groove of [-0.9, 0.9]) {
+      const zg = ((CAM_H - profileHeight(groove, bank)) * FOCAL) / dy;
+      const sx = W / 2 + (sample(look.L, zg) + groove) * (FOCAL / zg);
+      const wide = Math.max(2, (0.3 * FOCAL) / zg);
+      const core = Math.max(1, (0.1 * FOCAL) / zg);
+      const [faint, strong] = sheenTones(iceColor(profileSlope(groove, bank), Math.abs(groove) / HALF_W, Math.floor((s + z) / 5) % 2 === 0));
+      if (!runsCover(marks, Math.round(sx))) {
+        fillRow(ctx, sx - wide, sx + wide, y, tint(faint));
+        fillRow(ctx, sx - core, sx + core, y, tint(strong));
+      }
+      fillRow(ctx, sx, sx + 1, y, tint(PALETTE.trackGroove));
+    }
+    if (view.showLine) {
+      const along = s + z;
+      if (Math.floor(along / LINE_DASH) % 2 === 0) {
+        const x = racingLineAt(along) * SLED_X_RANGE;
+        const zl = ((CAM_H - profileHeight(x, bank)) * FOCAL) / dy;
+        const sx = W / 2 + (sample(look.L, zl) + x) * (FOCAL / zl);
+        const width = Math.max(1, Math.round((LINE_WIDTH * FOCAL) / zl));
+        fillRow(ctx, sx - width / 2, sx + width / 2, y, tint(PALETTE.orange));
+      }
+    }
+    return { marks, clip: { left: left.sx, right: right.sx, z: Math.min(left.z, right.z) } };
+  }
+  return null;
 }
 
 function drawRows(ctx, s, look, view) {
@@ -403,77 +491,40 @@ function drawRows(ctx, s, look, view) {
   });
   const clip = [];
   let next = 0;
-  const flushObjects = (y) => {
+  const flushObjects = (y, maxRow) => {
     while (next < objects.length) {
       const z = objects[next].along - s;
       if (HORIZON + CAM_H * (FOCAL / z) > y) break;
-      drawObject(maskedCtx(ctx, z, clip), objects[next], look, s, view.clock);
+      drawObject(maskedCtx(ctx, z, clip, maxRow), objects[next], look, s, view.clock);
       next += 1;
     }
   };
 
+  // With a row buffer every row base is drawn first and copied at once. That keeps the look: a row base covers
+  // its whole row, so an object pixel below the row it is drawn after never showed, and the objects are clipped
+  // there; the line marks and objects of each row are then drawn in the same order as before.
+  const buffer = createRowBuffer(ctx, W, HORIZON + 1, H - HORIZON - 1);
+  if (buffer) {
+    const marks = [];
+    for (let y = HORIZON + 1; y < H; y++) {
+      const row = drawRowBase(buffer, y, s, look, view, lines);
+      if (row) {
+        marks[y] = row.marks;
+        clip[y] = row.clip;
+      }
+    }
+    buffer.put();
+    for (let y = HORIZON + 1; y < H; y++) {
+      if (marks[y] !== undefined) paintRuns(ctx, y, marks[y]);
+      flushObjects(y, y);
+    }
+    return;
+  }
   for (let y = HORIZON + 1; y < H; y++) {
-    const dy = y - HORIZON;
-    const z = (CAM_H * FOCAL) / dy;
-    const fog = clamp((z - FOG_START) / FOG_SPAN, 0, 1);
-    const tint = (color) => mix(color, FOG_TARGET, fog);
-    const along = s + z;
-    fillRow(ctx, 0, W, y, tint(Math.floor(along / 8) % 2 === 0 ? PALETTE.snowLight : PALETTE.snowMid));
-
-    if (z < MAX_Z - 1) {
-      const bank = bankFor(sample(look.K, z));
-      // Project the cross-section: every sample sits at its own distance because higher points are nearer.
-      const points = SAMPLE_XS.map((x) => {
-        const h = profileHeight(x, bank);
-        const zi = ((CAM_H - h) * FOCAL) / dy;
-        return { x, z: zi, sx: W / 2 + (sample(look.L, zi) + x) * (FOCAL / zi) };
-      });
-      for (let i = 0; i < points.length - 1; i++) {
-        const a = points[i];
-        const b = points[i + 1];
-        if (b.sx <= a.sx) continue;
-        const midX = (a.x + b.x) / 2;
-        const midZ = (a.z + b.z) / 2;
-        const midAlong = s + midZ;
-        const spanFog = clamp((midZ - FOG_START) / FOG_SPAN, 0, 1);
-        const rim = Math.abs(midX) > HALF_W;
-        const color = rim
-          ? RIM_COLOR
-          : iceColor(profileSlope(midX, bank), Math.abs(midX) / HALF_W, Math.floor(midAlong / 5) % 2 === 0);
-        fillRow(ctx, a.sx, b.sx, y, mix(color, rim ? FOG_TARGET : ICE_FOG, spanFog));
-      }
-      // Rim outline and the two runner grooves in the bottom of the trough.
-      const left = points[0];
-      const right = points.at(-1);
-      drawPadding(ctx, look, bank, dy, s, y, bank > 0 ? left.sx : right.sx);
-      drawLip(ctx, y, left.sx, points[1].sx, -1, tint);
-      drawLip(ctx, y, right.sx, points.at(-2).sx, 1, tint);
-      // Start line, hop band and finish checker on this row: strictly inside the lip shadows, painted last.
-      const marks = lines === null ? null : lines.row(y, lipInner(left.sx, points[1].sx, -1) + 1, lipInner(right.sx, points.at(-2).sx, 1) - 2, bank);
-      for (const groove of [-0.9, 0.9]) {
-        const zg = ((CAM_H - profileHeight(groove, bank)) * FOCAL) / dy;
-        const sx = W / 2 + (sample(look.L, zg) + groove) * (FOCAL / zg);
-        const wide = Math.max(2, (0.3 * FOCAL) / zg);
-        const core = Math.max(1, (0.1 * FOCAL) / zg);
-        const [faint, strong] = sheenTones(iceColor(profileSlope(groove, bank), Math.abs(groove) / HALF_W, Math.floor((s + z) / 5) % 2 === 0));
-        if (!runsCover(marks, Math.round(sx))) {
-          fillRow(ctx, sx - wide, sx + wide, y, tint(faint));
-          fillRow(ctx, sx - core, sx + core, y, tint(strong));
-        }
-        fillRow(ctx, sx, sx + 1, y, tint(PALETTE.trackGroove));
-      }
-      if (view.showLine) {
-        const along = s + z;
-        if (Math.floor(along / LINE_DASH) % 2 === 0) {
-          const x = racingLineAt(along) * SLED_X_RANGE;
-          const zl = ((CAM_H - profileHeight(x, bank)) * FOCAL) / dy;
-          const sx = W / 2 + (sample(look.L, zl) + x) * (FOCAL / zl);
-          const width = Math.max(1, Math.round((LINE_WIDTH * FOCAL) / zl));
-          fillRow(ctx, sx - width / 2, sx + width / 2, y, tint(PALETTE.orange));
-        }
-      }
-      paintRuns(ctx, y, marks);
-      clip[y] = { left: left.sx, right: right.sx, z: Math.min(left.z, right.z) };
+    const row = drawRowBase(ctx, y, s, look, view, lines);
+    if (row) {
+      paintRuns(ctx, y, row.marks);
+      clip[y] = row.clip;
     }
     flushObjects(y);
   }
