@@ -24,16 +24,15 @@ test('stays ready until the first push, then starts pushing', () => {
   assert.ok(state.v >= LUGE_CONFIG.pushMin);
 });
 
-test('pushes raise the speed up to the cap and it decays without them', () => {
-  const state = Object.assign(createLugeState(), { phase: 'pushing', v: 2 });
-  stepLuge(state, { ...NONE, pushes: 1 }, DT);
-  assert.ok(state.v > 2 + LUGE_CONFIG.pushGain - 0.1);
-  stepLuge(state, { ...NONE, pushes: 50 }, DT);
-  assert.equal(state.v, LUGE_CONFIG.pushMax);
-  const before = state.v;
-  stepLuge(state, NONE, DT);
-  assert.ok(state.v < before);
-  for (let i = 0; i < 600 && state.phase === 'pushing'; i++) stepLuge(state, NONE, DT);
+test('tapping raises the push speed up to the cap and it falls back without taps', () => {
+  const state = Object.assign(createLugeState(), { phase: 'pushing', v: 1 });
+  for (let i = 0; i < 120; i++) stepLuge(state, { ...NONE, pushes: i % 5 === 0 ? 1 : 0 }, DT); // 12 taps per second
+  assert.equal(state.phase, 'pushing');
+  assert.ok(Math.abs(state.v - LUGE_CONFIG.pushMax) < 0.05, `v ${state.v}`);
+  const tapped = state.v;
+  for (let i = 0; i < 40 && state.phase === 'pushing'; i++) stepLuge(state, NONE, DT);
+  assert.ok(state.v < tapped);
+  for (let i = 0; i < 60 * 40 && state.phase === 'pushing'; i++) stepLuge(state, NONE, DT);
   assert.ok(state.v >= LUGE_CONFIG.pushMin);
 });
 
@@ -47,7 +46,7 @@ test('the push ends at the red line and the push speed carries on to the slope',
   assert.equal(state.phase, 'running');
   assert.ok(state.s >= RED_LINE_S);
   assert.ok(hopSpeed > 2);
-  assert.ok(state.time > 3 && state.time < 6, `push took ${state.time}`);
+  assert.ok(state.time > 2 && state.time < 5, `push took ${state.time}`);
 });
 
 test('without tapping the runner keeps walking and still reaches the red line', () => {
@@ -222,7 +221,7 @@ test('speedLimitAtLateral follows the sled position', () => {
   assert.equal(speedLimitAtLateral(0, 50, 0.5), Infinity);
 });
 
-test('the faster the player taps, the shorter the push and the higher the start speed', () => {
+test('more taps give more start speed up to the maximum, and 6-8 taps per second are enough for it', () => {
   const push = (everyTicks) => {
     const state = createLugeState();
     for (let tick = 0; tick < 60 * 40 && state.phase !== 'running'; tick++) {
@@ -230,10 +229,13 @@ test('the faster the player taps, the shorter the push and the higher the start 
     }
     return state;
   };
-  const fast = push(5);
-  const normal = push(7);
-  const slow = push(10);
-  assert.ok(fast.time < normal.time && normal.time < slow.time, `${fast.time} ${normal.time} ${slow.time}`);
-  assert.ok(fast.v > normal.v + 1 && normal.v > slow.v + 0.5, `${fast.v} ${normal.v} ${slow.v}`);
-  assert.ok(fast.v <= LUGE_CONFIG.pushMax);
+  const slow = push(15); // 4 taps per second
+  const six = push(10); // 6 taps per second
+  const eight = push(7); // 8.6 taps per second
+  const twelve = push(5); // 12 taps per second
+  assert.ok(slow.time > six.time && six.time > eight.time, `${slow.time} ${six.time} ${eight.time}`);
+  assert.ok(slow.v < six.v - 1, `${slow.v} ${six.v}`);
+  assert.ok(six.v > 0.9 * LUGE_CONFIG.pushMax, `6 taps per second gave ${six.v}`);
+  assert.ok(Math.abs(eight.v - LUGE_CONFIG.pushMax) < 0.05);
+  assert.ok(Math.abs(twelve.v - eight.v) < 0.05, 'tapping faster than that adds nothing');
 });

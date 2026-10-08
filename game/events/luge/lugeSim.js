@@ -2,11 +2,12 @@ import { curvatureAt, FINISH_S, RED_LINE_S } from './lugeTrack.js';
 
 // Distances in metres, speeds in m/s. Tuned with the bot test (tests/events/luge/bot.test.js).
 export const LUGE_CONFIG = {
-  pushGain: 1.3, // speed added per Space press while pushing
-  pushRate: 1.6, // share of the speed lost per second while pushing: the speed settles at taps per second · pushGain / pushRate
+  speedPerTap: 1.3, // push speed in m/s per tap per second: 6.2 taps/s already gives the maximum
+  tapSmooth: 0.4, // seconds over which the tapping rate is averaged
+  pushLag: 0.3, // seconds the push speed takes to follow the tapping rate
   pushMin: 1, // the runner never stops walking
-  pushMax: 12,
-  gravity: 8,
+  pushMax: 8,
+  gravity: 7,
   drag: 0.0022,
   brake: 22,
   lateralRate: 3.2, // lateral units per second while an arrow is held
@@ -57,13 +58,15 @@ export function speedLimitAtLateral(s, distance, lateral) {
 }
 
 export function createLugeState() {
-  return { phase: 'ready', s: 0, v: 0, lateral: 0, time: 0, reason: null, events: [] };
+  return { phase: 'ready', s: 0, v: 0, lateral: 0, time: 0, tapRate: 0, reason: null, events: [] };
 }
 
 function stepPush(state, controls, dt) {
   const c = LUGE_CONFIG;
   state.time += dt;
-  state.v = Math.min(c.pushMax, Math.max(c.pushMin, state.v + controls.pushes * c.pushGain - c.pushRate * state.v * dt));
+  state.tapRate += (controls.pushes / dt - state.tapRate) * Math.min(1, dt / c.tapSmooth);
+  const target = Math.min(c.pushMax, Math.max(c.pushMin, state.tapRate * c.speedPerTap));
+  state.v = Math.max(c.pushMin, state.v + (target - state.v) * (1 - Math.exp(-dt / c.pushLag)));
   state.s += state.v * dt;
   if (state.s >= RED_LINE_S) {
     state.phase = 'running';
