@@ -7,14 +7,15 @@ import { PALETTE } from '../../engine/palette.js';
 import { createRng } from '../../engine/rng.js';
 import { drawSnowfall } from '../../engine/scenery.js';
 import { drawCachedBackdrop } from './lugeBackdrop.js';
+import { createIcePainter } from './lugeIce.js';
 import { createRowBuffer } from './lugeRowBuffer.js';
 import { drawForestBackdrop, drawLugePine, forestObjects } from './lugeForest.js';
-import { lineOverlay, paintRuns, runsCover, SAMPLES } from './lugeLines.js';
+import { lineOverlay, paintRuns, SAMPLES } from './lugeLines.js';
 import { drawLugeSky } from './lugeSky.js';
 import { BOARD_CLEARANCE, drawVenueObject, isVenueObject, venueObjects } from './lugeVenue.js';
 import { drawRunner, drawSledAndRider, SLED_X_RANGE } from './lugeSled.js';
 import {
-  bankFor, CAM_H, FOCAL, H, HALF_W, HORIZON, lookahead, MAX_Z, profileHeight, profileSlope, project, sample, SLED_Z, W, WALL_T,
+  bankFor, CAM_H, FOCAL, H, HALF_W, HORIZON, lookahead, MAX_Z, profileHeight, project, sample, SLED_Z, W, WALL_T,
 } from './lugeProjection.js';
 import { FINISH_S, headingAt, racingLineAt, RED_LINE_S, TURNS } from './lugeTrack.js';
 
@@ -65,13 +66,10 @@ function fillRow(ctx, x0, x1, y, color) {
   ctx.fillRect(left, y, width, 1);
 }
 
-const ICE_LIT = mix(PALETTE.trackIce, PALETTE.white, 0.45);
-const ICE_DARK = mix(PALETTE.trackIce, PALETTE.concrete3, 0.6);
 const RIM_COLOR = '#c6d8f0'; // icy top lip: a cool blue-white fill
 const LIP_EDGE = PALETTE.white; // bright 1-2 px highlight on the inner edge of the lip
 const LIP_SHADOW = '#4a546c'; // thin dark line right below the lip, where the wall starts
 const LIP_MIN_W = 3; // minimum on-screen width of the lip (px), outline and highlight included
-const WALL_SHADE = '#36405a'; // cool shadow deep in the walls
 const ICE_FOG = mix(FOG_TARGET, PALETTE.white, 0.3); // the ice fades to a lighter mist than the snow: a faint sheen towards the horizon
 const X_OUT = HALF_W + WALL_T;
 
@@ -87,39 +85,8 @@ const PAD_MIN_BANK = 0.08; // the padding fades in from here to full height at P
 // Cross-section sample positions: the rim caps and SAMPLES steps across the trough.
 const SAMPLE_XS = [-X_OUT, ...Array.from({ length: SAMPLES + 1 }, (_, i) => -HALF_W + (i * 2 * HALF_W) / SAMPLES), X_OUT];
 
-// Ice colour from the slope of the surface (lit from the right, so the left wall is bright and the right wall
-// dark) with a darker tone deep in the walls, plus alternating bands that give a feeling of speed.
-const iceCache = new Map();
-function iceColor(slope, depth, band) {
-  const key = `${Math.round(slope * 20)}|${Math.round(depth * 12)}|${band}`;
-  let cached = iceCache.get(key);
-  if (cached === undefined) {
-    cached = computeIce(slope, depth, band);
-    iceCache.set(key, cached);
-  }
-  return cached;
-}
-
-// Soft sheen around a runner groove: two tones a little lighter than the local ice (wide and faint, then a core).
-const sheenCache = new Map();
-function sheenTones(ice) {
-  let tones = sheenCache.get(ice);
-  if (tones === undefined) {
-    tones = [mix(ice, PALETTE.white, 0.07), mix(ice, PALETTE.white, 0.15)];
-    sheenCache.set(ice, tones);
-  }
-  return tones;
-}
-
-function computeIce(slope, depth, band) {
-  let color = mix(ICE_DARK, ICE_LIT, clamp(0.5 - 0.42 * slope, 0, 1));
-  color = mix(color, PALETTE.skyLight, 0.12);
-  color = mix(color, PALETTE.concrete3, 0.22 * depth);
-  color = mix(color, WALL_SHADE, 0.85 * depth ** 2);
-  if (band) color = mix(color, PALETTE.white, 0.07);
-  return color;
-}
-
+// The ice between the rims: smooth shading, soft bands, wear lanes and a faint texture (lugeIce.js).
+const paintIce = createIcePainter({ fogOf: (z) => clamp((z - FOG_START) / FOG_SPAN, 0, 1), fogColor: ICE_FOG });
 
 // One screen row of the padding: the face towards the track, then the top. The outer rim is the higher one.
 function drawPadding(ctx, look, bank, dy, s, y, rimSx) {
@@ -434,21 +401,15 @@ function drawRowBase(ctx, y, s, look, view, lines) {
       const zi = ((CAM_H - h) * FOCAL) / dy;
       return { x, z: zi, sx: W / 2 + (sample(look.L, zi) + x) * (FOCAL / zi) };
     });
-    for (let i = 0; i < points.length - 1; i++) {
+    // Left rim cap, the ice, then the right rim cap.
+    const last = points.length - 1;
+    for (const i of [0, last - 1]) {
       const a = points[i];
       const b = points[i + 1];
-      if (b.sx <= a.sx) continue;
-      const midX = (a.x + b.x) / 2;
-      const midZ = (a.z + b.z) / 2;
-      const midAlong = s + midZ;
-      const spanFog = clamp((midZ - FOG_START) / FOG_SPAN, 0, 1);
-      const rim = Math.abs(midX) > HALF_W;
-      const color = rim
-        ? RIM_COLOR
-        : iceColor(profileSlope(midX, bank), Math.abs(midX) / HALF_W, Math.floor(midAlong / 5) % 2 === 0);
-      fillRow(ctx, a.sx, b.sx, y, mix(color, rim ? FOG_TARGET : ICE_FOG, spanFog));
+      if (b.sx > a.sx) fillRow(ctx, a.sx, b.sx, y, mix(RIM_COLOR, FOG_TARGET, clamp(((a.z + b.z) / 2 - FOG_START) / FOG_SPAN, 0, 1)));
+      if (i === 0) paintIce(ctx, y, points, 1, last - 1, s, bank, z);
     }
-    // Rim outline and the two runner grooves in the bottom of the trough.
+    // Rim outline, padding and lips.
     const left = points[0];
     const right = points.at(-1);
     drawPadding(ctx, look, bank, dy, s, y, bank > 0 ? left.sx : right.sx);
@@ -456,18 +417,6 @@ function drawRowBase(ctx, y, s, look, view, lines) {
     drawLip(ctx, y, right.sx, points.at(-2).sx, 1, tint);
     // Start line, hop band and finish checker on this row: strictly inside the lip shadows, painted last.
     const marks = lines === null ? null : lines.row(y, lipInner(left.sx, points[1].sx, -1) + 1, lipInner(right.sx, points.at(-2).sx, 1) - 2, bank);
-    for (const groove of [-0.9, 0.9]) {
-      const zg = ((CAM_H - profileHeight(groove, bank)) * FOCAL) / dy;
-      const sx = W / 2 + (sample(look.L, zg) + groove) * (FOCAL / zg);
-      const wide = Math.max(2, (0.3 * FOCAL) / zg);
-      const core = Math.max(1, (0.1 * FOCAL) / zg);
-      const [faint, strong] = sheenTones(iceColor(profileSlope(groove, bank), Math.abs(groove) / HALF_W, Math.floor((s + z) / 5) % 2 === 0));
-      if (!runsCover(marks, Math.round(sx))) {
-        fillRow(ctx, sx - wide, sx + wide, y, tint(faint));
-        fillRow(ctx, sx - core, sx + core, y, tint(strong));
-      }
-      fillRow(ctx, sx, sx + 1, y, tint(PALETTE.trackGroove));
-    }
     if (view.showLine) {
       const along = s + z;
       if (Math.floor(along / LINE_DASH) % 2 === 0) {

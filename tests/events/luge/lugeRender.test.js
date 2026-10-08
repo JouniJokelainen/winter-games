@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PALETTE } from '../../../game/engine/palette.js';
 import { renderLuge } from '../../../game/events/luge/lugeRender.js';
+import { PixelSurface } from '../../helpers/pixelSurface.js';
 import { recordingCtx } from '../../helpers/recordingCtx.js';
 
 const RETRO_COLORS = [PALETTE.yellow, PALETTE.ice, PALETTE.blue, PALETTE.navy, PALETTE.pine, PALETTE.brown];
@@ -303,7 +304,7 @@ test('the padding runs on the outer side of every turn: left of a right turn, ri
   assert.ok(left.right > 100 && left.left < left.right / 10, `left turn ${JSON.stringify(left)}`);
 });
 
-test('the icy lip, the shaded inner wall and the sheen show in the straight', () => {
+test('the icy lip and the shaded inner wall show in the straight', () => {
   const rects = render({ ...BASE, s: 60 });
   const rows = rects.filter((r) => r.y > 250 && r.y < 500);
   // Lip highlight: thin white rects on both rims.
@@ -313,15 +314,6 @@ test('the icy lip, the shaded inner wall and the sheen show in the straight', ()
   // Inner wall: dark cool wall tones (several px wide) beside the rims.
   const wall = rows.filter((r) => r.w >= 2 && (r.x + r.w < 200 || r.x > 440) && typeof r.color === 'string' && lum(r.color) < 105);
   assert.ok(wall.length > 100, `${wall.length} dark wall rects`);
-  // Sheen: a wide faint tone and a lighter, narrower core are drawn right before each 1 px groove.
-  let sheen = 0;
-  rects.forEach((r, i) => {
-    if (r.color !== PALETTE.trackGroove || r.w !== 1 || r.y < 400) return;
-    const core = rects[i - 1];
-    const faint = rects[i - 2];
-    if (core.y === r.y && faint.y === r.y && faint.w > core.w && lum(core.color) > lum(faint.color)) sheen += 1;
-  });
-  assert.ok(sheen > 100, `${sheen} groove rows with a sheen`);
 });
 
 test('the padding-heavy frames draw whole pixels without the retro colours', () => {
@@ -330,34 +322,6 @@ test('the padding-heavy frames draw whole pixels without the retro colours', () 
     for (const r of rects) assert.ok([r.x, r.y, r.w, r.h].every(Number.isInteger), `${JSON.stringify(view)} ${JSON.stringify(r)}`);
     const used = new Set(rects.map((r) => r.color));
     for (const color of RETRO_COLORS) assert.ok(!used.has(color), `${JSON.stringify(view)} uses ${color}`);
-  }
-});
-
-test('the groove sheen leaves the finish checker and the hop band intact', () => {
-  // Rows that carry a sheen: a faint wide rect, a lighter narrower core, then the 1 px groove.
-  const sheenRows = (rects) => {
-    const rows = new Set();
-    rects.forEach((r, i) => {
-      if (r.color !== PALETTE.trackGroove || r.w !== 1 || r.y < 205) return;
-      const core = rects[i - 1];
-      const faint = rects[i - 2];
-      if (core.y === r.y && faint.y === r.y && faint.w > core.w && lum(core.color) > lum(faint.color)) rows.add(r.y);
-    });
-    return rows;
-  };
-  const cases = [
-    { rects: render({ ...BASE, s: 1056, phase: 'finished' }), mark: (r) => r.color === PALETTE.black || r.color === PALETTE.paper, band: [250, 512] },
-    { rects: render({ ...BASE, s: -3.4, phase: 'push', showRedLine: true }), mark: (r) => r.color === PALETTE.red, band: [205, 240] },
-  ];
-  for (const { rects, mark, band } of cases) {
-    // Marked rows: an opaque marking covers a groove pixel of the row.
-    const grooves = rects.filter((r) => r.color === PALETTE.trackGroove && r.w === 1 && r.y >= band[0] && r.y < band[1]);
-    const marks = rects.filter((r) => r.h === 1 && r.y >= band[0] && r.y < band[1] && mark(r));
-    const marked = new Set(grooves.filter((g) => marks.some((r) => r.y === g.y && r.x <= g.x && r.x + r.w > g.x)).map((g) => g.y));
-    const sheen = sheenRows(rects);
-    assert.ok(marked.size >= 2, `${marked.size} marked rows`);
-    assert.ok(sheen.size > 10, 'the sheen still shows on plain ice rows');
-    for (const y of marked) assert.ok(!sheen.has(y), `row ${y} has both a marking and a sheen`);
   }
 });
 
@@ -469,27 +433,27 @@ test('the hop band edge is a smooth curve, not segment stair steps', () => {
   }
 });
 
-test('the groove, its sheen and the racing line do not paint over the lines', () => {
+test('the ice, its wear lanes and the racing line do not paint over the lines', () => {
   const cases = [
     { view: { ...BASE, s: 1056, phase: 'finished', showLine: true }, mark: (c) => c === PALETTE.black || c === PALETTE.paper, line: isCheckerColor },
     { view: { ...BASE, s: 14, phase: 'push', showRedLine: true, showLine: true }, mark: (c) => c === PALETTE.red || c === PALETTE.paper, line: (c) => c === PALETTE.red || c === PALETTE.paper || String(c).startsWith('rgba(') },
   ];
   for (const { view, mark, line } of cases) {
     const rects = render(view);
-    const ice = onIce(rects, lipsByRow(rects));
+    const ice = new Set(onIce(rects, lipsByRow(rects)).filter((r) => mark(r.color)));
     let checked = 0;
-    rects.forEach((g, i) => {
-      if (g.color !== PALETTE.trackGroove || g.w !== 1 || g.h !== 1) return;
-      const covers = (r) => r.x <= g.x && r.x + r.w > g.x && r.y === g.y;
-      // A groove pixel on a line: an opaque line colour covers it somewhere in the frame.
-      if (!ice.some((r) => covers(r) && mark(r.color))) return;
+    rects.forEach((m, i) => {
+      if (!ice.has(m)) return;
       checked += 1;
-      // The track row ends where the next row starts with its full-width snow fill.
+      // The middle pixel of an opaque line mark: the last fill of that pixel in its track row is a line colour
+      // (the track row ends where the next row starts with its full-width snow fill).
+      const x = m.x + Math.floor(m.w / 2);
+      const covers = (r) => r.x <= x && r.x + r.w > x && r.y <= m.y && r.y + r.h > m.y;
       const end = rects.findIndex((r, j) => j > i && r.w === 640);
-      const last = [g, ...rects.slice(i + 1, end).filter(covers)].at(-1);
-      assert.ok(line(last.color), `groove pixel ${g.x},${g.y} ends as ${last.color}`);
+      const last = [m, ...rects.slice(i + 1, end === -1 ? undefined : end).filter(covers)].at(-1);
+      assert.ok(line(last.color), `line pixel ${x},${m.y} ends as ${last.color}`);
     });
-    assert.ok(checked >= 4, `${checked} groove pixels on a line`);
+    assert.ok(checked >= 20, `${checked} line marks on the ice`);
   }
 });
 
@@ -529,4 +493,141 @@ test('the sky is deterministic, slides with the heading and drifts with the cloc
   assert.notEqual(sky(0.3, 5), sky(1.3, 5));
   assert.notEqual(sky(0.3, 5), sky(0.3, 25));
   assert.equal(sky(0.3, undefined), sky(0.3, 0));
+});
+
+// ---- smooth ice surface ---------------------------------------------------------------------------
+
+// A frame drawn the way the browser draws it (through the row buffer), without the snowflakes (white specks
+// drawn on top of everything); `direct` draws it rect by rect instead.
+function bufferedFrame(view, { direct = false } = {}) {
+  const surface = new PixelSurface(640, 512);
+  if (direct) surface.putImageData = undefined;
+  const fill = surface.fillRect.bind(surface);
+  surface.fillRect = function fillRect(x, y, w, h) {
+    if (!direct && this.fillStyle === PALETTE.white && w <= 2 && h <= 2) return;
+    fill(x, y, w, h);
+  };
+  renderLuge(surface, view);
+  return surface;
+}
+const pixelAt = (surface, x, y) => {
+  const i = (y * surface.width + x) * 4;
+  return [surface.px[i], surface.px[i + 1], surface.px[i + 2]].map(Math.round);
+};
+function pixelLum(surface, x, y) {
+  const [r, g, b] = pixelAt(surface, x, y);
+  return 0.3 * r + 0.59 * g + 0.11 * b;
+}
+const pixelDiff = (surface, x0, y0, x1, y1) => {
+  const a = pixelAt(surface, x0, y0);
+  const b = pixelAt(surface, x1, y1);
+  return Math.max(...[0, 1, 2].map((k) => Math.abs(a[k] - b[k])));
+};
+const SMOOTH_VIEWS = [{ ...BASE, s: 60 }, { ...BASE, s: 108, curve: 1 }, { ...BASE, s: 662, lateral: -0.5 }, { ...BASE, s: 412 }];
+
+test('the ice is a smooth gradient across the trough, without segment steps', () => {
+  for (const view of SMOOTH_VIEWS) {
+    const p = bufferedFrame(view);
+    const lips = lipsByRow(render(view));
+    for (const y of [440, 470, 500]) {
+      const lip = lips.get(y) ?? {};
+      let worst = 0;
+      let at = -1;
+      for (let x = Math.max(1, (lip.left ?? -1) + 4); x < Math.min(640, (lip.right ?? 640) - 3); x++) {
+        const d = pixelDiff(p, x, y, x - 1, y);
+        if (d > worst) [worst, at] = [d, x];
+      }
+      assert.ok(worst <= 7, `s=${view.s} row ${y}: a step of ${worst} at x=${at}`); // segment steps were up to 12 (43 at a groove)
+    }
+  }
+});
+
+test('the ice carries a faint texture: many tones, only small deviations from the local shade', () => {
+  for (const view of SMOOTH_VIEWS) {
+    const p = bufferedFrame(view);
+    const tones = new Set();
+    let worst = 0;
+    for (let y = 440; y < 512; y++) {
+      for (let x = 8; x < 632; x++) {
+        tones.add(pixelAt(p, x, y).join());
+        let sum = 0;
+        for (let k = -6; k <= 6; k++) sum += pixelLum(p, x + k, y);
+        worst = Math.max(worst, Math.abs(pixelLum(p, x, y) - sum / 13));
+      }
+    }
+    assert.ok(tones.size > 300, `s=${view.s}: ${tones.size} tones near the sled`); // flat segments: about 20
+    assert.ok(worst <= 9, `s=${view.s}: a pixel ${worst.toFixed(1)} off its local shade`);
+  }
+});
+
+test('the ice texture is deterministic and sticks to the track', () => {
+  const a = bufferedFrame({ ...BASE, s: 24 });
+  assert.equal(a.differing(bufferedFrame({ ...BASE, s: 24 })), 0);
+  // 20 m further on the same straight: one texture period and two band periods, so the near track looks the same.
+  const b = bufferedFrame({ ...BASE, s: 44 });
+  let differ = 0;
+  for (let y = 440; y < 512; y++) for (let x = 0; x < 640; x++) if (pixelAt(a, x, y).join() !== pixelAt(b, x, y).join()) differ += 1;
+  assert.equal(differ, 0, `${differ} near pixels differ`);
+  // Half a metre on: the texture moves with the track, so the near rows change.
+  const c = bufferedFrame({ ...BASE, s: 24.5 });
+  let moved = 0;
+  for (let y = 440; y < 512; y++) for (let x = 0; x < 640; x++) if (pixelAt(a, x, y).join() !== pixelAt(c, x, y).join()) moved += 1;
+  assert.ok(moved > 5000, `${moved} near pixels changed`);
+});
+
+test('no hairline groove runs along the ice: no groove colour and no 1 px dark run in the straight', () => {
+  const view = { ...BASE, s: 60 };
+  assert.equal(render(view).filter((r) => r.color === PALETTE.trackGroove).length, 0, 'groove rects');
+  const p = bufferedFrame(view);
+  const lips = lipsByRow(render(view));
+  let dips = 0;
+  for (let y = 250; y < 512; y++) {
+    const lip = lips.get(y) ?? {};
+    for (let x = Math.max(1, (lip.left ?? -1) + 4); x < Math.min(639, (lip.right ?? 640) - 4); x++) {
+      if (y > 290 && y < 432 && x > 250 && x < 390) continue; // the rider
+      const here = pixelLum(p, x, y);
+      if (here < Math.min(pixelLum(p, x - 1, y), pixelLum(p, x + 1, y)) - 6) dips += 1;
+    }
+  }
+  assert.equal(dips, 0, `${dips} pixels darker than both neighbours`);
+});
+
+test('the runner paths show as wide, dim wear lanes', async () => {
+  const { CAM_H, FOCAL, HORIZON, lookahead, profileHeight, sample } = await import('../../../game/events/luge/lugeProjection.js');
+  const view = { ...BASE, s: 60 };
+  const p = bufferedFrame(view);
+  const look = lookahead(view.s);
+  const screenX = (x, y) => {
+    const z = ((CAM_H - profileHeight(x, 0)) * FOCAL) / (y - HORIZON);
+    return Math.round(320 + (sample(look.L, z) + x) * (FOCAL / z));
+  };
+  // Mean luminance of a short vertical strip (averages the texture out).
+  const strip = (x) => {
+    let sum = 0;
+    for (let y = 450; y < 510; y++) sum += pixelLum(p, screenX(x, y), y);
+    return sum / 60;
+  };
+  for (const side of [-1, 1]) {
+    const lane = strip(side * 0.9);
+    const between = (strip(side * 0.55) + strip(side * 1.25)) / 2;
+    const contrast = between - lane;
+    assert.ok(contrast >= 1.5 && contrast <= 10, `side ${side}: lane ${lane.toFixed(1)} vs ${between.toFixed(1)}`);
+  }
+});
+
+test('the surface frames of the plan draw whole pixels without the retro colours on either path', () => {
+  const frames = [
+    { ...BASE, s: -3.4, phase: 'push', showRedLine: true, stride: 0.25 }, { ...BASE, s: 60 }, { ...BASE, s: 108, curve: 1 },
+    { ...BASE, s: 662, lateral: -0.5 }, { ...BASE, s: 412 }, { ...BASE, s: 560 }, { ...BASE, s: 1000 },
+    { ...BASE, s: 1056, phase: 'finished', banner: 'MAALI!' }, { ...BASE, s: 662, lateral: 1.3, sparks: true },
+  ];
+  const retro = new Set(RETRO_COLORS.map((c) => rgb(c).join()));
+  for (const view of frames) {
+    const rects = render(view);
+    for (const r of rects) assert.ok([r.x, r.y, r.w, r.h].every(Number.isInteger), `${view.s} ${JSON.stringify(r)}`);
+    const used = new Set(rects.map((r) => r.color));
+    for (const color of RETRO_COLORS) assert.ok(!used.has(color), `${view.s} uses ${color}`);
+    const p = bufferedFrame(view);
+    for (let y = 197; y < 512; y++) for (let x = 0; x < 640; x++) assert.ok(!retro.has(pixelAt(p, x, y).join()), `${view.s}: retro pixel at ${x},${y}`);
+  }
 });

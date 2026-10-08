@@ -15,6 +15,9 @@ function pack(color) {
   return value;
 }
 
+// Byte order of the buffer's `pixels`: little endian is 0xAABBGGRR, big endian 0xRRGGBBAA.
+export const PIXELS_LITTLE_ENDIAN = LITTLE_ENDIAN;
+
 let image = null;
 
 // A context-like target for rows top .. top + rows - 1 of a `width` px wide canvas, or null when `ctx` cannot take
@@ -24,6 +27,10 @@ export function createRowBuffer(ctx, width, top, rows) {
   if (!image || image.width !== width || image.height !== rows) image = ctx.createImageData(width, rows);
   const pixels = new Uint32Array(image.data.buffer, image.data.byteOffset, width * rows);
   return {
+    // Direct pixel access for per-pixel content (the ice): row y starts at (y - top) * width; see PIXELS_LITTLE_ENDIAN.
+    pixels,
+    width,
+    top,
     fillStyle: '#000000',
     fillRect(x, y, w, h) {
       const value = pack(this.fillStyle);
