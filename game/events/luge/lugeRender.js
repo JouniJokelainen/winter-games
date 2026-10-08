@@ -20,6 +20,11 @@ const FOG_START = 40;
 const LINE_DASH = 1.5; // metres per dash and per gap
 const LINE_WIDTH = 0.1; // metres
 const FOG_SPAN = 150;
+const RIM_X = HALF_W + WALL_T / 2; // centre of the rim cap
+const START_LINE_S = -0.9; // white start line: just behind the runner, near the bottom of the ready frame
+const START_LINE_HALF = 0.17; // metres
+const BARRIER_S = -0.3; // start barriers on the rims, beside the sled
+const HOP_BAND_HALF = 0.45; // metres; grows with distance so the band stays a few pixels thick far away
 const SPECTATOR_COLORS = [PALETTE.suitPink, PALETTE.guide, PALETTE.wood2, PALETTE.pineLight, PALETTE.concrete1, PALETTE.red];
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -118,6 +123,10 @@ function buildScenery(s) {
     const outer = turn.k > 0 ? -1 : 1;
     list.push({ type: 'sign', along: turn.at - 30, x: outer * (HALF_W + WALL_T + 1.2), height: 1.4 });
   }
+  for (const side of [-1, 1]) {
+    list.push({ type: 'flag', along: RED_LINE_S, x: side * RIM_X, height: 1.2 });
+    list.push({ type: 'barrier', along: BARRIER_S, x: side * RIM_X, height: 0.6 });
+  }
   list.push({ type: 'hut', along: 11, x: -(HALF_W + WALL_T + 4.5), height: 3 });
   list.push({ type: 'gantry', along: FINISH_S, x: 0, height: 5 });
   return list.filter((o) => o.along - s > 2.3 && o.along - s < MAX_Z - 2).sort((a, b) => b.along - a.along);
@@ -210,6 +219,70 @@ function drawObject(ctx, object, look, s) {
       });
       break;
     }
+    case 'flag': {
+      const rimH = profileHeight(object.x, bankFor(sample(look.K, z)));
+      const ground = Math.round(HORIZON + (CAM_H - rimH) * m);
+      const high = Math.round(object.height * m);
+      const post = Math.max(1, Math.round(0.05 * m));
+      ctx.fillStyle = tint(PALETTE.paperDim);
+      ctx.fillRect(sx - Math.floor(post / 2), ground - high, post, high);
+      const flagHigh = Math.max(2, Math.round(0.3 * m));
+      const flagLong = Math.max(3, Math.round(0.55 * m));
+      const left = sx + Math.ceil(post / 2);
+      for (let row = 0; row < flagHigh; row++) {
+        const taper = 1 - (Math.abs(row + 0.5 - flagHigh / 2) / (flagHigh / 2)) * 0.55;
+        ctx.fillStyle = tint(row === flagHigh - 1 && flagHigh > 3 ? PALETTE.darkRed : PALETTE.red);
+        ctx.fillRect(left, ground - high + row, Math.max(1, Math.round(flagLong * taper)), 1);
+      }
+      break;
+    }
+    case 'barrier': {
+      const near = z - 0.6;
+      const far = z + 0.6;
+      const rimH = profileHeight(object.x, bankFor(sample(look.K, z)));
+      const corner = (zz, dx, up) => {
+        const mm = FOCAL / zz;
+        return [Math.round(W / 2 + (sample(look.L, zz) + object.x + dx) * mm), Math.round(HORIZON + (CAM_H - rimH - up) * mm)];
+      };
+      const [nl, nTop] = corner(near, -0.3, object.height);
+      const [nr, nBottom] = corner(near, 0.3, 0);
+      const [fl, fTop] = corner(far, -0.3, object.height);
+      const [fr] = corner(far, 0.3, object.height);
+      const [, fBottom] = corner(far, 0.3, 0);
+      // Inner side (towards the track centre): a parallelogram between the near and the far inner edges.
+      const nIn = object.x < 0 ? nr : nl;
+      const fIn = object.x < 0 ? fr : fl;
+      const step = fIn >= nIn ? 1 : -1;
+      ctx.fillStyle = tint(PALETTE.wood4);
+      for (let x = nIn; x !== fIn; x += step) {
+        const k = (x - nIn) / (fIn - nIn);
+        const top = Math.round(nTop + (fTop - nTop) * k);
+        const bottom = Math.round(nBottom + (fBottom - nBottom) * k);
+        ctx.fillRect(Math.min(x, x + step), top, 1, bottom - top);
+      }
+      ctx.fillStyle = tint(PALETTE.wood6);
+      for (let x = nIn; x !== fIn; x += step) {
+        const k = (x - nIn) / (fIn - nIn);
+        const bottom = Math.round(nBottom + (fBottom - nBottom) * k);
+        ctx.fillRect(Math.min(x, x + step), bottom - 1, 1, 1);
+      }
+      // Rear face (towards the camera): planks with dark seams.
+      ctx.fillStyle = tint(PALETTE.wood2);
+      ctx.fillRect(nl, nTop, nr - nl, nBottom - nTop);
+      ctx.fillStyle = tint(PALETTE.wood5);
+      for (let y = nTop + 3; y < nBottom - 1; y += 3) ctx.fillRect(nl, y, nr - nl, 1);
+      ctx.fillRect(nl, nBottom - 1, nr - nl, 1);
+      // Top face from the near top edge back to the far one, with a darker front edge.
+      for (let y = nTop - 1; y >= fTop; y--) {
+        const k = (nTop - y) / Math.max(1, nTop - fTop);
+        const l = Math.round(nl + (fl - nl) * k);
+        ctx.fillStyle = tint(PALETTE.wood1);
+        ctx.fillRect(l, y, Math.round(nr + (fr - nr) * k) - l, 1);
+      }
+      ctx.fillStyle = tint(PALETTE.wood7);
+      ctx.fillRect(nl, nTop, nr - nl, 1);
+      break;
+    }
     default:
   }
 }
@@ -279,7 +352,16 @@ function drawRows(ctx, s, look, view) {
         let color = rim
           ? RIM_COLOR
           : iceColor(profileSlope(midX, bank), Math.abs(midX) / HALF_W, Math.floor(midAlong / 5) % 2 === 0);
-        if (view.showRedLine && Math.abs(midAlong - RED_LINE_S) < 0.35) color = PALETTE.red;
+        if (!rim) {
+          if (view.showRedLine) {
+            const half = Math.max(HOP_BAND_HALF, 0.08 * midZ);
+            const edgeW = Math.max(0.08, 0.016 * midZ);
+            const d = Math.abs(midAlong - RED_LINE_S);
+            if (d < half) color = d > half - edgeW ? PALETTE.paper : PALETTE.red;
+            else if (d < half + edgeW) color = PALETTE.paper;
+          }
+          if (Math.abs(midAlong - START_LINE_S) < START_LINE_HALF) color = PALETTE.paper;
+        }
         if (!rim && Math.abs(midAlong - FINISH_S) < 0.55) color = i % 2 === 0 ? PALETTE.black : PALETTE.paper;
         fillRow(ctx, a.sx, b.sx, y, mix(color, FOG_TARGET, spanFog));
       }

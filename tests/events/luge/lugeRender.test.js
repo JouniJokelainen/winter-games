@@ -75,3 +75,55 @@ test('the hopping rider and the leaning rider differ from the plain lying rider'
   assert.notEqual(pixels({ ...ride, curve: 1 }), pixels(ride));
   assert.equal(pixels({ ...ride, hop: 1 }), pixels(ride));
 });
+
+const redCount = (view) => {
+  const ctx = recordingCtx();
+  renderLuge(ctx, view);
+  return ctx.rects.filter((r) => r.color === PALETTE.red).length;
+};
+
+test('the hop line is a wide red band that is drawn only while showRedLine is on', () => {
+  const on = redCount(VIEWS.push);
+  const off = redCount({ ...VIEWS.push, showRedLine: false });
+  assert.ok(on > off + 60, `${on} vs ${off}`);
+});
+
+test('the start line is drawn across the ice behind the runner in the ready frame', () => {
+  const paperRow = (view) => {
+    const rows = new Map();
+    const ctx = recordingCtx();
+    renderLuge(ctx, view);
+    for (const r of ctx.rects) if (r.color === PALETTE.paper && r.y > 400 && r.h === 1) rows.set(r.y, (rows.get(r.y) ?? 0) + r.w);
+    return Math.max(0, ...rows.values());
+  };
+  assert.ok(paperRow({ ...VIEWS.push, showRedLine: false }) > 100);
+  assert.equal(paperRow({ ...BASE, s: 300 }) > 100, false);
+});
+
+test('red flags stand at the hop line even when the line itself is hidden', () => {
+  const near = redCount({ ...BASE, s: 20 - 18, phase: 'push', showRedLine: false });
+  const far = redCount({ ...BASE, s: 300, phase: 'push', showRedLine: false });
+  assert.ok(near > far + 10, `${near} vs ${far}`);
+});
+
+test('start barriers stand on both rims in the ready frame', () => {
+  const wood = (view) => {
+    const ctx = recordingCtx();
+    renderLuge(ctx, view);
+    return ctx.rects.filter((r) => r.color === PALETTE.wood2 && r.y > 250 && (r.x < 160 || r.x > 480));
+  };
+  assert.ok(wood({ ...VIEWS.push, showRedLine: false }).length >= 2);
+  assert.equal(wood({ ...BASE, s: 300 }).length, 0);
+});
+
+test('the start area frames draw whole pixels without the retro colours', () => {
+  for (const s of [-3.4, 0, 4, 2, 17, 19.9, 24]) {
+    for (const showRedLine of [true, false]) {
+      const ctx = recordingCtx();
+      renderLuge(ctx, { ...BASE, s, phase: 'push', showRedLine });
+      for (const r of ctx.rects) assert.ok([r.x, r.y, r.w, r.h].every(Number.isInteger), `${s} ${JSON.stringify(r)}`);
+      const used = new Set(ctx.rects.map((r) => r.color));
+      for (const color of RETRO_COLORS) assert.ok(!used.has(color), `${s} uses ${color}`);
+    }
+  }
+});
