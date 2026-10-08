@@ -117,7 +117,9 @@ const LAYERS = [
 ];
 
 export const FOREST_LAYERS = LAYERS;
-export const FOREST_REACH = 72; // no backdrop tree pixel is higher than this above the horizon
+// No backdrop tree pixel is higher than this above the horizon (tallest tree 54 + rise 4 + spire): the cached forest
+// strips are this tall; lugeBackdrop.test.js checks that drawForestLayer stays inside.
+export const FOREST_REACH = 72;
 
 export function forestOffset(layer, heading) {
   return heading * HEADING_PX * layer.par;

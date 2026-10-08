@@ -10,24 +10,41 @@ import {
   CLOUD_LAYERS, cloudX, drawCloud, drawGradient, drawHaze, drawRidge, drawSunAt, RIDGES, ridgeShift, SUN_REACH, sunCenter,
 } from './lugeSky.js';
 
-function createCanvas(width, height) {
-  if (typeof OffscreenCanvas === 'function') return new OffscreenCanvas(width, height);
-  if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+// Canvas makers in order of preference. A maker whose canvas gives no 2d context (or throws) is dropped for good,
+// so the next one is tried and a broken kind is not retried for every sprite and frame.
+let broken = false; // a canvas kind has failed: a failed build is then remembered instead of retried every frame
+const makers = [
+  (width, height) => (typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(width, height) : null),
+  (width, height) => {
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function') return null;
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     return canvas;
+  },
+];
+
+// A transparent offscreen canvas painted once by `paint`, or null when no canvas with a 2d context can be made.
+function offscreen(width, height, paint) {
+  for (const make of [...makers]) {
+    let canvas = null;
+    let ctx = null;
+    try {
+      canvas = make(width, height);
+      ctx = canvas?.getContext('2d') ?? null;
+    } catch {
+      ctx = null;
+    }
+    if (ctx) {
+      paint(ctx);
+      return canvas;
+    }
+    if (canvas) {
+      makers.splice(makers.indexOf(make), 1); // it exists but cannot draw: stop using this kind
+      broken = true;
+    }
   }
   return null;
-}
-
-// A transparent offscreen canvas painted once by `paint`, or null when no canvas can be made.
-function offscreen(width, height, paint) {
-  const canvas = createCanvas(width, height);
-  const ctx = canvas?.getContext('2d');
-  if (!ctx) return null;
-  paint(ctx);
-  return canvas;
 }
 
 const mod = (a, n) => ((a % n) + n) % n;
@@ -38,6 +55,7 @@ function buildCache({ horizon, tint, headingRange: [lo, hi] }) {
 
   const [sunHalfW, sunHalfH] = SUN_REACH;
   const sun = { canvas: offscreen(sunHalfW * 2 + 2, sunHalfH * 2 + 2, (ctx) => drawSunAt(ctx, sunHalfW, sunHalfH)), x: sunHalfW, y: sunHalfH };
+  if (!sun.canvas) return null;
 
   const clouds = CLOUD_LAYERS.map((layer) => layer.clouds.map((cloud) => {
     const x = Math.ceil(cloud.rx * 1.1) + 2;
@@ -45,6 +63,7 @@ function buildCache({ horizon, tint, headingRange: [lo, hi] }) {
     const down = Math.ceil(cloud.ry * 1.4) + 4;
     return { canvas: offscreen(x * 2, up + down + 1, (ctx) => drawCloud(ctx, layer, cloud, x, up)), x, y: up };
   }));
+  if (!clouds.every((layer) => layer.every((sprite) => sprite.canvas))) return null;
 
   // Ridges: one strip per column phase (the columns start at screen x = 0, i.e. at position `shift`).
   const ridges = RIDGES.map((ridge) => {
@@ -60,10 +79,11 @@ function buildCache({ horizon, tint, headingRange: [lo, hi] }) {
     });
     return { ridge, strips, height };
   });
+  if (!ridges.every(({ strips }) => strips.every((strip) => strip.canvas))) return null;
 
   // Forest layers: the offset is fractional and every tree rounds its own position, so each layer gets a strip per
-  // quarter pixel of offset (built on first use, or one per frame in advance); the nearest one slid by whole pixels puts almost every tree on
-  // exactly the pixel of the direct drawing (the rest are one pixel off).
+  // quarter pixel of offset (built on first use, or one per frame in advance); the nearest one slid by whole
+  // pixels puts almost every tree on exactly the pixel of the direct drawing (the rest are one pixel off).
   const forest = FOREST_LAYERS.map((layer) => {
     const a = forestOffset(layer, lo);
     const b = forestOffset(layer, hi);
@@ -87,19 +107,23 @@ function forestSlice(entry, offset) {
 function forestStrip({ entry, phase }, tint) {
   if (entry.strips[phase] === undefined) {
     const { layer, origin, width } = entry;
+    // null when it cannot be built: remembered, so it is not retried every frame (the caller then draws directly).
     entry.strips[phase] = offscreen(width, FOREST_HEIGHT, (ctx) => drawForestLayer(ctx, layer, { offset: origin + phase / FOREST_PHASES, horizon: FOREST_REACH, tint, width }));
   }
   return entry.strips[phase];
 }
 
-let cache;
+let cache; // the cache, or { horizon, tint, failed: true } after a canvas failure (not retried every frame)
 
 // Draws the whole backdrop from the cache; false when it cannot (then nothing has been drawn).
 // `tint` must be the same function on every call: the forest strips are painted with it once.
 export function drawCachedBackdrop(ctx, { heading, clock, horizon, tint, headingRange }) {
   if (typeof ctx.drawImage !== 'function') return false;
-  if (cache === undefined || cache.horizon !== horizon || cache.tint !== tint) cache = buildCache({ horizon, tint, headingRange }) ?? undefined;
-  if (!cache) return false;
+  if (cache === undefined || cache.horizon !== horizon || cache.tint !== tint) {
+    cache = buildCache({ horizon, tint, headingRange }) ?? (broken ? { horizon, tint, failed: true } : undefined);
+  }
+  if (!cache) return false; // no canvas at all (tests, node): nothing to remember
+  if (cache.failed) return false;
   const ridgeSlices = cache.ridges.map(({ ridge, strips }) => {
     const shift = ridgeShift(ridge, heading);
     const strip = strips[mod(shift, ridge.step)];

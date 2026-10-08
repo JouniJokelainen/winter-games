@@ -147,7 +147,7 @@ export class LugeScene {
       label: this.label,
       limitKmh: Number.isFinite(limit) ? Math.round(limit * MS_TO_KMH) : null,
       warning: this.isWarning(),
-      sparks: state.phase === 'crashed',
+      sparks: state.phase === 'crashed' && state.reason === 'wall',
       banner: BANNERS[state.phase],
       stride: (state.s / STRIDE_LENGTH) % 1,
       showRedLine: pushing,

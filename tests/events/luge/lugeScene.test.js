@@ -178,3 +178,14 @@ test('curveOf is the track curvature divided by kMax, clamped to ±1', () => {
   assert.ok(Math.abs(curveOf(955) - curvatureAt(955) / LUGE_CONFIG.kMax) < 1e-9 && curveOf(955) < -0.6);
   for (let s = 0; s < 1100; s += 2.5) assert.ok(Math.abs(curveOf(s)) <= 1, `${s}`);
 });
+
+test('sparks fly for a wall crash only, not for a time-limit crash', () => {
+  const sparkLike = (reason) => {
+    const { scene } = makeScene();
+    Object.assign(scene.state, { phase: 'crashed', reason, s: 662, lateral: 1, time: 20 });
+    const ctx = recordingCtx();
+    scene.render(ctx);
+    return ctx.rects.filter((r) => r.color === PALETTE.paper && r.w === 2 && r.h === 2 && r.y > 300).length;
+  };
+  assert.ok(sparkLike('wall') - sparkLike('time') >= 6);
+});

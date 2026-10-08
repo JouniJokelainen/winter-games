@@ -1,8 +1,13 @@
 // A software row buffer for the luge track rows: fillRect calls with opaque '#rrggbb' colours are written into an
 // ImageData in plain JS and copied to the canvas with one putImageData, instead of ≈ 12 000 canvas fillRects.
 // Only for content that covers every pixel of its rows (putImageData replaces pixels, it does not blend).
+// putImageData also ignores the transform, the global alpha, the clip and the compositing mode: the rows must be
+// drawn 1:1 with an identity transform and without any alpha or clip wrapper around the call.
 const LITTLE_ENDIAN = new Uint8Array(new Uint32Array([1]).buffer)[0] === 1;
 const packed = new Map();
+
+// Two-digit hex strings 00..ff, shared by the renderers that build '#rrggbb' colours.
+export const HEX = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'));
 
 function pack(color) {
   let value = packed.get(color);

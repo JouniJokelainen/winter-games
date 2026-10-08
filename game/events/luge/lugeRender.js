@@ -1,4 +1,4 @@
-// Luge scene renderer (art trial). Segment-style pseudo-3D drawn row by row from the horizon to the
+// Luge scene renderer. Segment-style pseudo-3D drawn row by row from the horizon to the
 // bottom of the 640×512 canvas: ice track, banked concrete walls, snow, trees, spectators and signs.
 import { formatTime } from '../../core/format.js';
 import { drawBlinking } from '../../engine/draw.js';
@@ -8,7 +8,7 @@ import { createRng } from '../../engine/rng.js';
 import { drawSnowfall } from '../../engine/scenery.js';
 import { drawCachedBackdrop } from './lugeBackdrop.js';
 import { createIcePainter } from './lugeIce.js';
-import { createRowBuffer } from './lugeRowBuffer.js';
+import { createRowBuffer, HEX } from './lugeRowBuffer.js';
 import { drawForestBackdrop, drawLugePine, forestObjects } from './lugeForest.js';
 import { lineOverlay, paintRuns, SAMPLES } from './lugeLines.js';
 import { drawLugeSky } from './lugeSky.js';
@@ -27,6 +27,7 @@ const LINE_DASH = 1.5; // metres per dash and per gap
 const LINE_WIDTH = 0.1; // metres
 const FOG_SPAN = 150;
 const RIM_X = HALF_W + WALL_T / 2; // centre of the rim cap
+const SPARK_RATE = 12; // sparks flicker: a new random spray this many times a second
 const BARRIER_S = -0.3; // start barriers on the rims, beside the sled
 
 // Stretches where no near tree stands: the start area, the finish and the outer side of every turn (venue objects).
@@ -41,7 +42,6 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 // Colour blend, memoised: the track asks for the same few thousand blends every frame. `t` is quantised to 1/32.
 const mixCache = new Map();
-const HEX = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'));
 
 function mix(hexA, hexB, t) {
   if (t <= 0) return hexA;
@@ -383,7 +383,7 @@ function maskedCtx(ctx, z, clip, maxRow = Infinity) {
   };
 }
 
-// The opaque base of one screen row, covering its full width: snow, ice, rims, padding, lips, grooves and the
+// The opaque base of one screen row, covering its full width: snow, ice, rims, padding, lips and the
 // racing line. Returns the line marks of the row and its rim silhouette, or null beyond the track.
 function drawRowBase(ctx, y, s, look, view, lines) {
   const dy = y - HORIZON;
@@ -432,6 +432,8 @@ function drawRowBase(ctx, y, s, look, view, lines) {
   return null;
 }
 
+// Note: the row buffer is copied with putImageData, which ignores the transform, the alpha, the clip and the
+// compositing mode, so the track rows must be drawn 1:1 with an identity transform and no alpha or clip wrapper.
 function drawRows(ctx, s, look, view) {
   const objects = buildScenery(s);
   const lines = lineOverlay(s, look, {
@@ -498,7 +500,7 @@ function drawHud(ctx, view) {
     ctx.fillRect(barX + Math.round((barWidth * view.limitKmh) / maxKmh) - 1, 22, 3, 18);
   }
   drawText(ctx, view.label ?? 'HARJOITUS 1', W / 2 + 40, 6, { align: 'center', scale: TEXT_SCALE, color: PALETTE.skyLight });
-  drawText(ctx, view.phase === 'push' ? 'TYÖNTÖ' : `KÄÄNNÖS ${view.turn ?? 1}/10`, W - 8, 6, { align: 'right', scale: TEXT_SCALE, color: PALETTE.white });
+  drawText(ctx, view.phase === 'push' ? 'TYÖNTÖ' : `KÄÄNNÖS ${view.turn ?? 1}/${TURNS.length}`, W - 8, 6, { align: 'right', scale: TEXT_SCALE, color: PALETTE.white });
 }
 
 export function renderLuge(ctx, view) {
@@ -511,8 +513,9 @@ export function renderLuge(ctx, view) {
   drawSledAndRider(ctx, look, full);
   if (view.phase === 'push') drawRunner(ctx, look, full, view.stride ?? 0);
   if (view.sparks) {
-    const rng = createRng(77);
-    const [x, y] = project(look, view.lateral * 1.9, profileHeight(view.lateral * 1.9, full.bank) + 0.1, SLED_Z - 0.1);
+    const rng = createRng(77 + Math.floor(clock * SPARK_RATE));
+    const sparkX = view.lateral * SLED_X_RANGE;
+    const [x, y] = project(look, sparkX, profileHeight(sparkX, full.bank) + 0.1, SLED_Z - 0.1);
     ctx.fillStyle = PALETTE.paper;
     for (let i = 0; i < 16; i++) ctx.fillRect(Math.round(x + (rng() - 0.5) * 70), Math.round(y - rng() * 28), 2, 2);
   }

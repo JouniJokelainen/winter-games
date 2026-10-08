@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PALETTE } from '../../../game/engine/palette.js';
+import { drawText } from '../../../game/engine/font.js';
 import { renderLuge } from '../../../game/events/luge/lugeRender.js';
+import { TURNS } from '../../../game/events/luge/lugeTrack.js';
 import { PixelSurface } from '../../helpers/pixelSurface.js';
 import { recordingCtx } from '../../helpers/recordingCtx.js';
 
@@ -630,4 +632,33 @@ test('the surface frames of the plan draw whole pixels without the retro colours
     const p = bufferedFrame(view);
     for (let y = 197; y < 512; y++) for (let x = 0; x < 640; x++) assert.ok(!retro.has(pixelAt(p, x, y).join()), `${view.s}: retro pixel at ${x},${y}`);
   }
+});
+
+// ---- sparks and HUD ---------------------------------------------------------------------------------
+
+const sparkRects = (view) => recordingCtx_render(view).filter((r) => r.color === PALETTE.paper && r.w === 2 && r.h === 2 && r.y > 300);
+function recordingCtx_render(view) {
+  const ctx = recordingCtx();
+  renderLuge(ctx, view);
+  return ctx.rects;
+}
+
+test('sparks are drawn only when asked for, flicker with the clock and are fixed for a given clock', () => {
+  const crash = { ...BASE, s: 662, lateral: 1.3, curve: 1 };
+  const off = sparkRects({ ...crash, clock: 1 }).length;
+  const on = sparkRects({ ...crash, sparks: true, clock: 1 });
+  assert.ok(on.length - off >= 6, `${on.length} vs ${off} spark-sized rects`);
+  const key = (rects) => rects.map((r) => `${r.x},${r.y}`).join(' ');
+  assert.equal(key(sparkRects({ ...crash, sparks: true, clock: 1 })), key(on));
+  assert.notEqual(key(sparkRects({ ...crash, sparks: true, clock: 1.2 })), key(on));
+});
+
+test('the HUD shows the turn number out of the number of turns of the track', () => {
+  const ctx = recordingCtx();
+  drawText(ctx, `KÄÄNNÖS 3/${TURNS.length}`, 640 - 8, 6, { align: 'right', scale: 2, color: PALETTE.white });
+  const shown = recordingCtx_render({ ...BASE, s: 108, turn: 3 });
+  const key = (r) => `${r.x},${r.y},${r.w},${r.h},${r.color}`;
+  const have = new Set(shown.map(key));
+  assert.ok(ctx.rects.length > 20);
+  for (const r of ctx.rects) assert.ok(have.has(key(r)), `missing HUD rect ${key(r)}`);
 });

@@ -9,16 +9,15 @@
 import { PALETTE } from '../../engine/palette.js';
 import { createRng } from '../../engine/rng.js';
 import { BANK_H, HALF_W, RIM_H } from './lugeProjection.js';
-import { PIXELS_LITTLE_ENDIAN } from './lugeRowBuffer.js';
+import { HEX, PIXELS_LITTLE_ENDIAN } from './lugeRowBuffer.js';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const rgbOf = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 const lerp3 = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
-const HEX = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'));
 
 const WHITE = rgbOf(PALETTE.white);
-const ICE_LIT = lerp3(rgbOf(PALETTE.trackIce), WHITE, 0.45);
-const ICE_DARK = lerp3(rgbOf(PALETTE.trackIce), rgbOf(PALETTE.concrete3), 0.6);
+const ICE_LIT = lerp3(rgbOf(PALETTE.trackIce), WHITE, 0.52);
+const ICE_DARK = lerp3(rgbOf(PALETTE.trackIce), rgbOf(PALETTE.concrete3), 0.48);
 const SKY = rgbOf(PALETTE.skyLight);
 const CONCRETE = rgbOf(PALETTE.concrete3);
 const WALL_SHADE = rgbOf('#36405a'); // cool shadow deep in the walls
@@ -125,12 +124,12 @@ function slopeAt(x, bank) {
 
 // Smooth shade of the ice at trough position x (metres) and distance `along` the track, with fog 0..1 towards
 // `fogRgb`. Written into out[0..2].
-export function iceShade(x, bank, along, fog, fogRgb, out) {
+function iceShade(x, bank, along, fog, fogRgb, out) {
   const depth = Math.min(1, Math.abs(x) / HALF_W);
   const lit = clamp(0.5 - 0.42 * slopeAt(x, bank), 0, 1);
   const band = BAND_MEAN + BAND_AMP * Math.cos((2 * Math.PI * (along - BAND_PERIOD / 4)) / BAND_PERIOD);
-  const concrete = 0.22 * depth;
-  const shade = 0.85 * depth * depth;
+  const concrete = 0.15 * depth;
+  const shade = 0.66 * depth * depth;
   for (let k = 0; k < 3; k++) {
     let c = ICE_DARK[k] + (ICE_LIT[k] - ICE_DARK[k]) * lit;
     c += (SKY[k] - c) * 0.12;
@@ -148,15 +147,19 @@ const ramp = (z, from, to) => clamp((z - from) / (to - from), 0, 1);
 // A painter for the ice of one screen row. `fogOf(z)` gives the fog amount 0..1 at distance z.
 export function createIcePainter({ fogOf, fogColor }) {
   const fogRgb = rgbOf(fogColor);
-  const R = new Float64Array(64);
-  const G = new Float64Array(64);
-  const B = new Float64Array(64);
-  const U = new Float64Array(64);
-  const A = new Float64Array(64);
+  // Per-sample arrays, sized from the number of cross-section points of the first row.
+  let R;
+  let G;
+  let B;
+  let U;
+  let A;
   const out = [0, 0, 0];
 
   // points: the projected cross-section {x, z, sx}; the ice runs from points[first] to points[last].
   return function paintIce(target, y, points, first, last, s, bank, rowZ) {
+    if (!R || R.length < points.length) {
+      [R, G, B, U, A] = Array.from({ length: 5 }, () => new Float64Array(points.length));
+    }
     for (let i = first; i <= last; i++) {
       const p = points[i];
       iceShade(p.x, bank, s + p.z, fogOf(p.z), fogRgb, out);

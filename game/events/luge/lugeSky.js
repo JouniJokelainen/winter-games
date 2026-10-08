@@ -80,7 +80,9 @@ export function drawGradient(ctx, horizon) {
   }
 }
 
-export const SUN_REACH = [78, 62]; // half width and half height of the widest glow
+// Half width and half height of the widest glow (blob radius 78 x 0.8): the cached sun sprite is sized from it;
+// lugeBackdrop.test.js checks that drawSunAt stays inside.
+export const SUN_REACH = [78, 62];
 export function sunCenter(heading) {
   return [Math.round(W * 0.68 - heading * HEADING_PX * 0.03), 104];
 }

@@ -283,12 +283,6 @@ export function lineOverlay(s, look, { showRedLine, tint }) {
   return { row };
 }
 
-// True when an opaque run of the row covers pixel column x.
-export function runsCover(runs, x) {
-  if (runs === null) return false;
-  return runs.some((r) => r.solid && r.x <= x && r.x + r.w > x);
-}
-
 export function paintRuns(ctx, y, runs) {
   if (runs === null) return;
   for (const r of runs) {
