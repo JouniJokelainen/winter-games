@@ -271,18 +271,58 @@ test('the venue frames draw whole pixels without the retro colours', () => {
   }
 });
 
-test('the outer side of a turn has padding along the rim, a straight shows only a distant sliver', async () => {
-  const { PADDING_COLORS } = await import('../../../game/events/luge/lugeRender.js');
-  const count = (view) => {
-    const ctx = recordingCtx();
-    renderLuge(ctx, view);
-    return ctx.rects.filter((r) => PADDING_COLORS.includes(r.color)).length;
-  };
-  const hairpin = count({ ...BASE, s: 662, lateral: -0.5 });
-  const rightTurn = count({ ...BASE, s: 108 });
-  const straight = count({ ...BASE, s: 60 });
-  assert.ok(hairpin > 300, `hairpin ${hairpin} padding rects`);
-  assert.ok(rightTurn > 100, `right turn ${rightTurn} padding rects`);
-  // Turn 1 is already visible far ahead at s = 60: only a few thin, distant padding rows show.
-  assert.ok(straight < 40 && straight * 8 < hairpin, `straight ${straight} padding rects`);
+const lum = (hex) => 0.3 * parseInt(hex.slice(1, 3), 16) + 0.59 * parseInt(hex.slice(3, 5), 16) + 0.11 * parseInt(hex.slice(5, 7), 16);
+const render = (view) => {
+  const ctx = recordingCtx();
+  renderLuge(ctx, view);
+  return ctx.rects;
+};
+
+// Padding is a dark blue-grey strip: any blue-dominant, darkish rect on the track rows beside the sled (fog-independent).
+const isPadding = (r) => {
+  const c = typeof r.color === 'string' && r.color[0] === '#' ? [1, 3, 5].map((i) => parseInt(r.color.slice(i, i + 2), 16)) : null;
+  return c && r.y >= 215 && c[2] - c[0] >= 38 && c[2] < 200 && (r.x + r.w < 230 || r.x > 410);
+};
+const paddingSides = (view) => {
+  const rects = render(view).filter(isPadding);
+  return { left: rects.filter((r) => r.x + r.w < 230).length, right: rects.filter((r) => r.x > 410).length };
+};
+
+test('the padding runs on the outer side of every turn: left of a right turn, right of a left turn', () => {
+  const hairpin = paddingSides({ ...BASE, s: 662, lateral: -0.5 }); // right turn
+  const right = paddingSides({ ...BASE, s: 108 }); // right turn
+  const left = paddingSides({ ...BASE, s: 412 }); // left turn
+  assert.ok(hairpin.left > 150 && hairpin.right < hairpin.left / 10, `hairpin ${JSON.stringify(hairpin)}`);
+  assert.ok(right.left > 100 && right.right < right.left / 10, `right turn ${JSON.stringify(right)}`);
+  assert.ok(left.right > 100 && left.left < left.right / 10, `left turn ${JSON.stringify(left)}`);
+});
+
+test('the icy lip, the shaded inner wall and the sheen show in the straight', () => {
+  const rects = render({ ...BASE, s: 60 });
+  const rows = rects.filter((r) => r.y > 250 && r.y < 500);
+  // Lip highlight: thin white rects on both rims.
+  const highlight = (side) => rows.filter((r) => r.color === PALETTE.white && r.h === 1 && r.w <= 2 && side(r.x)).length;
+  assert.ok(highlight((x) => x < 200) > 100, 'left lip highlight');
+  assert.ok(highlight((x) => x > 440) > 100, 'right lip highlight');
+  // Inner wall: dark cool wall tones (several px wide) beside the rims.
+  const wall = rows.filter((r) => r.w >= 2 && (r.x + r.w < 200 || r.x > 440) && typeof r.color === 'string' && lum(r.color) < 105);
+  assert.ok(wall.length > 100, `${wall.length} dark wall rects`);
+  // Sheen: a wide faint tone and a lighter, narrower core are drawn right before each 1 px groove.
+  let sheen = 0;
+  rects.forEach((r, i) => {
+    if (r.color !== PALETTE.trackGroove || r.w !== 1 || r.y < 400) return;
+    const core = rects[i - 1];
+    const faint = rects[i - 2];
+    if (core.y === r.y && faint.y === r.y && faint.w > core.w && lum(core.color) > lum(faint.color)) sheen += 1;
+  });
+  assert.ok(sheen > 100, `${sheen} groove rows with a sheen`);
+});
+
+test('the padding-heavy frames draw whole pixels without the retro colours', () => {
+  for (const view of [{ s: 662, lateral: -0.5 }, { s: 412 }, { s: 662, lateral: 1.3, sparks: true }, { s: 288 }, { s: 500 }]) {
+    const rects = render({ ...BASE, ...view });
+    for (const r of rects) assert.ok([r.x, r.y, r.w, r.h].every(Number.isInteger), `${JSON.stringify(view)} ${JSON.stringify(r)}`);
+    const used = new Set(rects.map((r) => r.color));
+    for (const color of RETRO_COLORS) assert.ok(!used.has(color), `${JSON.stringify(view)} uses ${color}`);
+  }
 });

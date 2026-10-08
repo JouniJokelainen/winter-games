@@ -66,20 +66,22 @@ function fillRow(ctx, x0, x1, y, color) {
 
 const ICE_LIT = mix(PALETTE.trackIce, PALETTE.white, 0.45);
 const ICE_DARK = mix(PALETTE.trackIce, PALETTE.concrete3, 0.6);
-const RIM_COLOR = mix(PALETTE.white, PALETTE.skyLight, 0.12); // icy top lip
-const LIP_EDGE = PALETTE.white; // thin highlight on the inner edge of the lip
-const WALL_SHADE = '#5a647c'; // cool shadow deep in the walls
-const ICE_SHEEN = mix(PALETTE.trackIce, PALETTE.white, 0.3); // streak along each runner groove
+const RIM_COLOR = '#c6d8f0'; // icy top lip: a cool blue-white fill
+const LIP_EDGE = PALETTE.white; // bright 1-2 px highlight on the inner edge of the lip
+const LIP_SHADOW = '#4a546c'; // thin dark line right below the lip, where the wall starts
+const LIP_MIN_W = 3; // minimum on-screen width of the lip (px), outline and highlight included
+const WALL_SHADE = '#36405a'; // cool shadow deep in the walls
 const ICE_FOG = mix(FOG_TARGET, PALETTE.white, 0.3); // the ice fades to a lighter mist than the snow: a faint sheen towards the horizon
 const X_OUT = HALF_W + WALL_T;
 
 // Padding on the outer side of a turn: a low dark-blue strip along the rim, outside the icy lip.
-const PAD_FACE = '#2f3d5c';
-const PAD_TOP_A = '#4a5d85';
-const PAD_TOP_B = '#3b4b70';
-export const PADDING_COLORS = [PAD_FACE, PAD_TOP_A, PAD_TOP_B];
-const PAD_H = 0.25; // metres above the rim (the rim is at most 2.0 m, the camera is at 2.4 m)
-const PAD_W = 0.9; // metres outwards from the rim
+const PAD_FACE = '#3c4a6b';
+const PAD_TOP_A = '#8195ba';
+const PAD_TOP_B = '#63779e';
+const PAD_EDGE = '#c3cfe3'; // lighter line along the top edge of the padding
+const PAD_H = 0.6; // metres above the rim (capped just below the camera height where the rim is high)
+const PAD_W = 0.7; // metres outwards from the rim
+const PAD_MIN_BANK = 0.08; // the padding fades in from here to full height at PAD_MIN_BANK + 0.3
 
 // Cross-section sample positions: the rim caps and 24 steps across the trough.
 const SAMPLE_XS = [-X_OUT, ...Array.from({ length: 25 }, (_, i) => -HALF_W + (i * 2 * HALF_W) / 24), X_OUT];
@@ -97,11 +99,22 @@ function iceColor(slope, depth, band) {
   return cached;
 }
 
+// Soft sheen around a runner groove: two tones a little lighter than the local ice (wide and faint, then a core).
+const sheenCache = new Map();
+function sheenTones(ice) {
+  let tones = sheenCache.get(ice);
+  if (tones === undefined) {
+    tones = [mix(ice, PALETTE.white, 0.07), mix(ice, PALETTE.white, 0.15)];
+    sheenCache.set(ice, tones);
+  }
+  return tones;
+}
+
 function computeIce(slope, depth, band) {
   let color = mix(ICE_DARK, ICE_LIT, clamp(0.5 - 0.42 * slope, 0, 1));
   color = mix(color, PALETTE.skyLight, 0.12);
   color = mix(color, PALETTE.concrete3, 0.22 * depth);
-  color = mix(color, WALL_SHADE, 0.55 * depth ** 2.5);
+  color = mix(color, WALL_SHADE, 0.85 * depth ** 2);
   if (band) color = mix(color, PALETTE.white, 0.07);
   return color;
 }
@@ -109,10 +122,10 @@ function computeIce(slope, depth, band) {
 
 // One screen row of the padding: the face towards the track, then the top. The outer rim is the higher one.
 function drawPadding(ctx, look, bank, dy, s, y, rimSx) {
-  const height = PAD_H * clamp((Math.abs(bank) - 0.1) / 0.4, 0, 1);
+  const height = PAD_H * clamp((Math.abs(bank) - PAD_MIN_BANK) / 0.3, 0, 1);
   if (height < 0.05) return;
   const side = bank > 0 ? -1 : 1;
-  const topH = Math.min(profileHeight(side * HALF_W, bank) + height, CAM_H - 0.1);
+  const topH = Math.min(profileHeight(side * HALF_W, bank) + height, CAM_H - 0.04);
   const z = ((CAM_H - topH) * FOCAL) / dy;
   const m = FOCAL / z;
   const offset = sample(look.L, z);
@@ -123,10 +136,30 @@ function drawPadding(ctx, look, bank, dy, s, y, rimSx) {
   if (side > 0) {
     fillRow(ctx, rimSx, faceSx, y, mix(PAD_FACE, FOG_TARGET, fog));
     fillRow(ctx, faceSx, topSx, y, mix(top, FOG_TARGET, fog));
+    fillRow(ctx, topSx - 1, topSx, y, mix(PAD_EDGE, FOG_TARGET, fog));
   } else {
     fillRow(ctx, topSx, faceSx, y, mix(top, FOG_TARGET, fog));
+    fillRow(ctx, topSx, topSx + 1, y, mix(PAD_EDGE, FOG_TARGET, fog));
     fillRow(ctx, faceSx, rimSx, y, mix(PAD_FACE, FOG_TARGET, fog));
   }
+}
+
+// One side of the rim cap on a screen row: concrete outline outside, cool blue-white lip, a bright highlight on the
+// inner edge and a thin dark line just inside on the wall. The lip is at least LIP_MIN_W px wide.
+function drawLip(ctx, y, outerSx, innerSx, side, tint) {
+  const outer = Math.round(outerSx);
+  const inner = side < 0 ? Math.max(Math.round(innerSx), outer + LIP_MIN_W) : Math.min(Math.round(innerSx), outer - LIP_MIN_W);
+  const lo = Math.min(outer, inner);
+  const hi = Math.max(outer, inner);
+  const wide = hi - lo >= 5;
+  if (hi - lo > Math.abs(Math.round(innerSx) - outer)) fillRow(ctx, lo, hi, y, tint(RIM_COLOR));
+  ctx.fillStyle = tint(PALETTE.concrete2);
+  ctx.fillRect(side < 0 ? lo : hi - 1, y, 1, 1);
+  ctx.fillStyle = tint(LIP_EDGE);
+  const edgeW = wide ? 2 : 1;
+  ctx.fillRect(side < 0 ? hi - edgeW : lo, y, edgeW, 1);
+  ctx.fillStyle = tint(LIP_SHADOW);
+  ctx.fillRect(side < 0 ? hi : lo - 1, y, 1, 1);
 }
 
 // ---- backdrop -----------------------------------------------------------------------------------
@@ -380,6 +413,7 @@ function drawRows(ctx, s, look, view) {
         const midAlong = s + midZ;
         const spanFog = clamp((midZ - FOG_START) / FOG_SPAN, 0, 1);
         const rim = Math.abs(midX) > HALF_W;
+        let plain = !rim;
         let color = rim
           ? RIM_COLOR
           : iceColor(profileSlope(midX, bank), Math.abs(midX) / HALF_W, Math.floor(midAlong / 5) % 2 === 0);
@@ -390,24 +424,29 @@ function drawRows(ctx, s, look, view) {
             const d = Math.abs(midAlong - RED_LINE_S);
             if (d < half) color = d > half - edgeW ? PALETTE.paper : PALETTE.red;
             else if (d < half + edgeW) color = PALETTE.paper;
+            plain = d >= half + edgeW;
           }
         }
-        if (!rim && Math.abs(midAlong - FINISH_S) < 0.55) color = i % 2 === 0 ? PALETTE.black : PALETTE.paper;
-        fillRow(ctx, a.sx, b.sx, y, mix(color, rim ? FOG_TARGET : ICE_FOG, spanFog));
+        if (!rim && Math.abs(midAlong - FINISH_S) < 0.55) {
+          color = i % 2 === 0 ? PALETTE.black : PALETTE.paper;
+          plain = false;
+        }
+        fillRow(ctx, a.sx, b.sx, y, mix(color, plain ? ICE_FOG : FOG_TARGET, spanFog));
       }
       // Rim outline and the two runner grooves in the bottom of the trough.
       const left = points[0];
       const right = points.at(-1);
-      if (Math.abs(bank) > 0.1) drawPadding(ctx, look, bank, dy, s, y, bank > 0 ? left.sx : right.sx);
-      fillRow(ctx, points[1].sx - 1, points[1].sx, y, tint(LIP_EDGE));
-      fillRow(ctx, points.at(-2).sx, points.at(-2).sx + 1, y, tint(LIP_EDGE));
-      fillRow(ctx, left.sx, left.sx + 1, y, tint(PALETTE.concrete2));
-      fillRow(ctx, right.sx - 1, right.sx, y, tint(PALETTE.concrete2));
+      drawPadding(ctx, look, bank, dy, s, y, bank > 0 ? left.sx : right.sx);
+      drawLip(ctx, y, left.sx, points[1].sx, -1, tint);
+      drawLip(ctx, y, right.sx, points.at(-2).sx, 1, tint);
       for (const groove of [-0.9, 0.9]) {
         const zg = ((CAM_H - profileHeight(groove, bank)) * FOCAL) / dy;
         const sx = W / 2 + (sample(look.L, zg) + groove) * (FOCAL / zg);
-        const half = Math.max(1, (0.06 * FOCAL) / zg);
-        fillRow(ctx, sx - half, sx + half, y, tint(ICE_SHEEN));
+        const wide = Math.max(2, (0.3 * FOCAL) / zg);
+        const core = Math.max(1, (0.1 * FOCAL) / zg);
+        const [faint, strong] = sheenTones(iceColor(profileSlope(groove, bank), Math.abs(groove) / HALF_W, Math.floor((s + z) / 5) % 2 === 0));
+        fillRow(ctx, sx - wide, sx + wide, y, tint(faint));
+        fillRow(ctx, sx - core, sx + core, y, tint(strong));
         fillRow(ctx, sx, sx + 1, y, tint(PALETTE.trackGroove));
       }
       if (view.showLine) {
