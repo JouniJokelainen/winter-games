@@ -8,15 +8,17 @@ import { CAM_H, FOCAL, HALF_W, HORIZON, sample, W, WALL_T } from './lugeProjecti
 import { FINISH_S, TURNS } from './lugeTrack.js';
 
 const EDGE = HALF_W + WALL_T;
+const ONE = [null];
+const SCRATCH = []; // reused per object
 const ROW_DEPTH = 0.9; // metres per tier, across
 const TIER_STEP = 0.5; // metres of rise per tier
 const BAY = 1.5; // metres between two spectator columns along the track
 const WAVE_PERIOD = 0.5; // seconds for one full wave (two arm poses)
-const MAX_Z = 150; // beyond this the venue is just fog
+const VENUE_RANGE = 150; // metres; beyond this the venue is just fog
 const MIN_PIXELS = 2; // metres → pixels below which a spectator is not worth drawing
 
 // Outfits: jacket colour and the colour of the hat band. Bodies are listed first so tests can count them.
-export const OUTFITS = [
+const OUTFITS = [
   { body: PALETTE.suitPink, hat: PALETTE.paper },
   { body: PALETTE.guide, hat: PALETTE.red },
   { body: PALETTE.wood2, hat: PALETTE.concrete3 },
@@ -51,48 +53,6 @@ function hash(a, b, c) {
   return (h >>> 0) / 4294967296;
 }
 
-// ---- placement ----------------------------------------------------------------------------------------
-
-const GROUP_TURNS = [2, 4, 6, 8]; // turns 3, 5, 7, 9
-
-function standBays(side, from, to, style, rows, seed) {
-  const bays = [];
-  for (let along = from, i = 0; along <= to; along += BAY, i++) {
-    bays.push({ type: 'bay', along, x: side * (EDGE + 1.4), side, rows, style, seed: seed * 1000 + i });
-  }
-  return bays;
-}
-
-function buildVenue() {
-  const list = [
-    ...standBays(1, 2, 16, 'wood', 4, 1),
-    ...standBays(-1, 15, 31, 'wood', 4, 2),
-    ...standBays(1, FINISH_S - 24, FINISH_S + 14, 'concrete', 4, 3),
-    ...standBays(-1, FINISH_S - 24, FINISH_S + 14, 'concrete', 4, 4),
-  ];
-  for (const index of GROUP_TURNS) {
-    const turn = TURNS[index];
-    const outer = turn.k > 0 ? -1 : 1;
-    const along = turn.at + 6 + hash(index, 1, 1) * 6;
-    list.push({ type: 'group', along, x: outer * (EDGE + 5.4), side: outer, seed: 40 + index, count: 5 + (index % 3) });
-  }
-  const groupAlong = GROUP_TURNS.map((index) => TURNS[index].at + 10);
-  for (let along = 90, i = 0; along < FINISH_S - 30; along += 60, i++) {
-    if (groupAlong.some((g) => Math.abs(g - along) < 14)) continue;
-    for (const side of [-1, 1]) {
-      list.push({ type: 'board', along: along + (side > 0 ? 0 : 30), x: side * (EDGE + 3.4), style: (i + (side > 0 ? 0 : 1)) % BOARD_STYLES.length });
-    }
-  }
-  return list.sort((a, b) => a.along - b.along);
-}
-
-const VENUE = buildVenue();
-
-// Venue objects whose along lies in [from, to].
-export function venueObjects(from, to) {
-  return VENUE.filter((o) => o.along >= from && o.along <= to);
-}
-
 // ---- spectators ---------------------------------------------------------------------------------------
 
 // Outfit by weight: the loud pink and red are rarer than the calm navy, mustard and green.
@@ -121,7 +81,68 @@ function spectator(seed, k, cx, bottom, legs) {
   };
 }
 
+// ---- placement ----------------------------------------------------------------------------------------
+
+const GROUP_TURNS = [2, 4, 6, 8]; // turns 3, 5, 7, 9
+
+function standBays(side, from, to, style, rows, seed) {
+  const bays = [];
+  for (let along = from, i = 0; along <= to; along += BAY, i++) {
+    const bay = { type: 'bay', along, x: side * (EDGE + 1.4), side, rows, style, seed: seed * 1000 + i, people: [] };
+    for (let r = 0; r < rows; r++) if (hash(bay.seed, r, 0) >= 0.1) bay.people.push({ r, spec: spectator(bay.seed, r, 0, 0, 0) }); // else an empty seat
+    bays.push(bay);
+  }
+  return bays;
+}
+
+function buildVenue() {
+  const list = [
+    ...standBays(1, 2, 16, 'wood', 4, 1),
+    ...standBays(-1, 15, 31, 'wood', 4, 2),
+    ...standBays(1, FINISH_S - 24, FINISH_S + 14, 'concrete', 4, 3),
+    ...standBays(-1, FINISH_S - 24, FINISH_S + 14, 'concrete', 4, 4),
+  ];
+  for (const index of GROUP_TURNS) {
+    const turn = TURNS[index];
+    const outer = turn.k > 0 ? -1 : 1;
+    const along = turn.at + 6 + hash(index, 1, 1) * 6;
+    const seed = 40 + index;
+    const members = Array.from({ length: 5 + (index % 3) }, (_, k) => ({
+      dz: (hash(seed, k, 7) - 0.5) * 4,
+      dx: (hash(seed, k, 8) - 0.5) * 3.6,
+      spec: spectator(seed, k, 0, 0, 0.5),
+    })).sort((a, b) => b.dz - a.dz); // far first
+    list.push({ type: 'group', along, x: outer * (EDGE + 5.4), side: outer, members });
+  }
+  const groups = list.filter((o) => o.type === 'group');
+  for (let along = 90, i = 0; along < FINISH_S - 30; along += 60, i++) {
+    for (const side of [-1, 1]) {
+      const at = along + (side > 0 ? 0 : 30);
+      if (groups.some((g) => g.side === side && Math.abs(g.along - at) < 14)) continue; // the group has the spot
+      list.push({ type: 'board', along: at, x: side * (EDGE + 3.4), side, style: (i + (side > 0 ? 0 : 1)) % BOARD_STYLES.length });
+    }
+  }
+  return list.sort((a, b) => a.along - b.along);
+}
+
+const VENUE = buildVenue();
+
+// Stretches along the track where trees must stay clear of a board: { from, to, side }.
+export const BOARD_CLEARANCE = VENUE.filter((o) => o.type === 'board').map((o) => ({ from: o.along - 6, to: o.along + 6, side: o.side }));
+
+export const isVenueObject = (object) => object.type === 'bay' || object.type === 'group' || object.type === 'board';
+
+// Venue objects whose along lies in [from, to].
+export function venueObjects(from, to) {
+  return VENUE.filter((o) => o.along >= from && o.along <= to);
+}
+
+// ---- spectators ---------------------------------------------------------------------------------------
+
 // Draws spectators in colour passes: trousers, jackets (with arms), skin, hat bands, flags.
+const pose = (clock, s) => Math.floor(clock / (WAVE_PERIOD / 2) + s.phase) & 1;
+const legsOf = (s, m) => Math.round(s.legs * m);
+
 function drawSpectators(ctx, list, m, clock, tint) {
   if (list.length === 0) return;
   const bw = Math.max(1, Math.round(0.5 * m));
@@ -129,11 +150,9 @@ function drawSpectators(ctx, list, m, clock, tint) {
   const hw = Math.max(1, Math.round(0.26 * m));
   const hh = Math.max(1, Math.round(0.28 * m));
   const detail = m >= 7;
-  const pose = (s) => Math.floor(clock / (WAVE_PERIOD / 2) + s.phase) & 1;
-  const legsOf = (s) => Math.round(s.legs * m);
 
   ctx.fillStyle = tint(TROUSERS);
-  for (const s of list) if (s.legs > 0) ctx.fillRect(s.cx - (bw >> 1), s.bottom - legsOf(s), bw, legsOf(s));
+  for (const s of list) if (s.legs > 0) ctx.fillRect(s.cx - (bw >> 1), s.bottom - legsOf(s, m), bw, legsOf(s, m));
 
   const armW = Math.max(1, Math.round(0.14 * m));
   for (let o = 0; o < OUTFITS.length; o++) {
@@ -144,10 +163,10 @@ function drawSpectators(ctx, list, m, clock, tint) {
         ctx.fillStyle = tint(OUTFITS[o].body);
         started = true;
       }
-      const top = s.bottom - legsOf(s) - bh;
+      const top = s.bottom - legsOf(s, m) - bh;
       ctx.fillRect(s.cx - (bw >> 1), top, bw, bh);
       if (detail && s.kind === 'wave') {
-        const up = pose(s) === 1 ? Math.round(0.62 * m) : Math.round(0.3 * m);
+        const up = pose(clock, s) === 1 ? Math.round(0.62 * m) : Math.round(0.3 * m);
         const x = s.left ? s.cx - (bw >> 1) - armW + 1 : s.cx - (bw >> 1) + bw - 1;
         ctx.fillRect(x, top - up, armW, up + Math.round(0.3 * m));
       }
@@ -156,10 +175,10 @@ function drawSpectators(ctx, list, m, clock, tint) {
 
   ctx.fillStyle = tint(PALETTE.skin);
   for (const s of list) {
-    const top = s.bottom - legsOf(s) - bh;
+    const top = s.bottom - legsOf(s, m) - bh;
     ctx.fillRect(s.cx - (hw >> 1), top - hh, hw, hh);
     if (detail && s.kind === 'wave') {
-      const up = pose(s) === 1 ? Math.round(0.62 * m) : Math.round(0.3 * m);
+      const up = pose(clock, s) === 1 ? Math.round(0.62 * m) : Math.round(0.3 * m);
       const hand = Math.max(2, armW);
       const x = s.left ? s.cx - (bw >> 1) - armW + 1 : s.cx - (bw >> 1) + bw - 1;
       ctx.fillRect(x, top - up - hand + 1, hand, hand);
@@ -176,7 +195,7 @@ function drawSpectators(ctx, list, m, clock, tint) {
           ctx.fillStyle = tint(OUTFITS[o].hat);
           started = true;
         }
-        ctx.fillRect(s.cx - (hw >> 1), s.bottom - legsOf(s) - bh - hh, hw, band);
+        ctx.fillRect(s.cx - (hw >> 1), s.bottom - legsOf(s, m) - bh - hh, hw, band);
       }
     }
   }
@@ -186,13 +205,13 @@ function drawSpectators(ctx, list, m, clock, tint) {
     const fh = Math.max(2, Math.round(0.2 * m));
     for (const s of list) {
       if (s.kind !== 'flag') continue;
-      const top = s.bottom - legsOf(s) - bh;
+      const top = s.bottom - legsOf(s, m) - bh;
       const px = s.left ? s.cx - (bw >> 1) : s.cx + (bw >> 1) - 1;
       const poleTop = top - Math.round(0.6 * m);
       ctx.fillStyle = tint(PALETTE.paperDim);
       ctx.fillRect(px, poleTop, 1, Math.round(0.6 * m) + Math.round(0.2 * m));
       ctx.fillStyle = tint(FLAG_COLORS[s.flag]);
-      ctx.fillRect(pose(s) === 1 ? px - fw + 1 : px, poleTop, fw, fh);
+      ctx.fillRect(pose(clock, s) === 1 ? px - fw + 1 : px, poleTop, fw, fh);
     }
   }
 }
@@ -203,7 +222,8 @@ function drawBay(ctx, object, sx, base, m, tint, clock) {
   const style = STAND_STYLES[object.style];
   const rd = ROW_DEPTH * m;
   const side = object.side;
-  const people = [];
+  const people = SCRATCH;
+  people.length = 0;
   const edge = (r) => Math.round(sx + side * r * rd);
   for (let r = 0; r < object.rows; r++) {
     const a = edge(r);
@@ -218,8 +238,11 @@ function drawBay(ctx, object, sx, base, m, tint, clock) {
     ctx.fillRect(left, top, width, 1);
     ctx.fillStyle = tint(style.edge);
     ctx.fillRect(side > 0 ? left : left + width - 1, top, 1, base - top);
-    if (hash(object.seed, r, 0) < 0.1) continue; // an empty seat
-    people.push(spectator(object.seed, r, Math.round(sx + side * (r + 0.5) * rd), top, 0));
+  }
+  for (const p of object.people) {
+    p.spec.cx = Math.round(sx + side * (p.r + 0.5) * rd);
+    p.spec.bottom = base - Math.round((TIER_STEP * (p.r + 1) + 0.1) * m);
+    people.push(p.spec);
   }
   // Rear wall behind the top tier so the stand reads as one solid mass.
   const rearA = edge(object.rows);
@@ -231,20 +254,15 @@ function drawBay(ctx, object, sx, base, m, tint, clock) {
 }
 
 function drawGroup(ctx, object, tint, clock, look, s) {
-  const people = [];
   const z0 = object.along - s;
-  for (let k = 0; k < object.count; k++) {
-    const dz = (hash(object.seed, k, 7) - 0.5) * 4;
-    const dx = (hash(object.seed, k, 8) - 0.5) * 3.6;
-    const z = z0 + dz;
+  for (const member of object.members) {
+    const z = z0 + member.dz;
+    if (z <= 2.3) continue;
     const mm = FOCAL / z;
-    people.push({ z, spec: spectator(object.seed, k, 0, 0, 0.5), mm, dx });
-  }
-  people.sort((a, b) => b.z - a.z); // far first
-  for (const p of people) {
-    p.spec.cx = Math.round(W / 2 + (sample(look.L, p.z) + object.x + p.dx) * p.mm);
-    p.spec.bottom = Math.round(HORIZON + CAM_H * p.mm);
-    drawSpectators(ctx, [p.spec], p.mm, clock, tint);
+    member.spec.cx = Math.round(W / 2 + (sample(look.L, z) + object.x + member.dx) * mm);
+    member.spec.bottom = Math.round(HORIZON + CAM_H * mm);
+    ONE[0] = member.spec;
+    drawSpectators(ctx, ONE, mm, clock, tint);
   }
 }
 
@@ -281,7 +299,7 @@ function drawBoard(ctx, object, sx, base, m, tint) {
 export function drawVenueObject(ctx, object, info) {
   const { sx, base, m, tint, z, clock, look, s } = info;
   if (object.type !== 'bay' && object.type !== 'group' && object.type !== 'board') return false;
-  if (z > MAX_Z || m < MIN_PIXELS) return true;
+  if (z > VENUE_RANGE || m < MIN_PIXELS) return true;
   if (object.type === 'bay') drawBay(ctx, object, sx, base, m, tint, clock);
   else if (object.type === 'group') drawGroup(ctx, object, tint, clock, look, s);
   else drawBoard(ctx, object, sx, base, m, tint);

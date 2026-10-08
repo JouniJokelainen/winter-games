@@ -8,7 +8,7 @@ import { createRng } from '../../engine/rng.js';
 import { drawSnowfall } from '../../engine/scenery.js';
 import { drawForestBackdrop, drawLugePine, forestObjects } from './lugeForest.js';
 import { drawLugeSky } from './lugeSky.js';
-import { drawVenueObject, venueObjects } from './lugeVenue.js';
+import { BOARD_CLEARANCE, drawVenueObject, isVenueObject, venueObjects } from './lugeVenue.js';
 import { drawRunner, drawSledAndRider, SLED_X_RANGE } from './lugeSled.js';
 import {
   bankFor, CAM_H, FOCAL, H, HALF_W, HORIZON, lookahead, MAX_Z, profileHeight, profileSlope, project, sample, SLED_Z, W, WALL_T,
@@ -32,6 +32,7 @@ const FOREST_MARGINS = [
   { from: -50, to: 40, side: 0 },
   { from: FINISH_S - 40, to: FINISH_S + 40, side: 0 },
   ...TURNS.map((turn) => ({ from: turn.at - 20, to: turn.at + 20, side: turn.k > 0 ? -1 : 1 })),
+  ...BOARD_CLEARANCE,
 ];
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -170,7 +171,10 @@ function drawObject(ctx, object, look, s, clock) {
   const base = Math.round(HORIZON + CAM_H * m);
   const fog = clamp((z - FOG_START) / FOG_SPAN, 0, 0.8);
   const tint = (color) => mix(color, FOG_TARGET, fog);
-  if (drawVenueObject(ctx, object, { sx, base, m, tint, z, clock, look, s })) return;
+  if (isVenueObject(object)) {
+    drawVenueObject(ctx, object, { sx, base, m, tint, z, clock, look, s });
+    return;
+  }
   switch (object.type) {
     case 'pine': {
       const height = Math.round(object.height * m);
@@ -308,6 +312,7 @@ function maskedCtx(ctx, z, clip) {
   return {
     fillStyle: '#000',
     fillRect(x, y, w, h) {
+      if (h <= 0) return;
       ctx.fillStyle = this.fillStyle;
       // Fast path: when no row of the rect meets the rim silhouette, it is one plain rect.
       let clear = true;

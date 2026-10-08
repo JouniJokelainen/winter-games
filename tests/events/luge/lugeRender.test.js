@@ -211,10 +211,24 @@ test('the finish stands are full of spectators and the open straight has none', 
   assert.ok(finish > straight + 100, `finish ${finish} vs straight ${straight} spectator rects`);
 });
 
+// Heads are the one spectator colour nothing else in the scene shares (skin; the rider is below y = 300).
+const SKIN_RGB = rgb(PALETTE.skin);
+const heads = (view) => {
+  const ctx = recordingCtx();
+  renderLuge(ctx, view);
+  return ctx.rects.filter((r) => {
+    if (typeof r.color !== 'string' || !r.color.startsWith('#') || r.y < 150 || r.y > 300) return false;
+    const c = rgb(r.color);
+    return Math.hypot(c[0] - SKIN_RGB[0], c[1] - SKIN_RGB[1], c[2] - SKIN_RGB[2]) < 20;
+  });
+};
+
 test('the start stands are full of spectators in the ready frame', () => {
-  const ready = outfitRects({ ...BASE, s: -3.4, phase: 'push', showRedLine: true, stride: 0.25 }).length;
-  const straight = outfitRects({ ...BASE, s: 60 }).length;
-  assert.ok(ready > straight + 60, `ready ${ready} vs straight ${straight}`);
+  const ready = heads({ ...BASE, s: -3.4, phase: 'push', showRedLine: true, stride: 0.25 });
+  const straight = heads({ ...BASE, s: 60 });
+  assert.equal(straight.length, 0);
+  assert.ok(ready.length >= 40, `${ready.length} spectator heads`);
+  assert.ok(ready.some((r) => r.x > 320) && ready.some((r) => r.x < 320), 'both sides of the start have spectators');
 });
 
 test('the spectators wave: two clock values change at least 20 spectator rects', () => {
@@ -229,14 +243,22 @@ test('the spectators wave: two clock values change at least 20 spectator rects',
 });
 
 test('a small group of spectators stands on the outer side of turn 3', () => {
-  const crowd = outfitRects({ ...BASE, s: 288 });
-  const left = crowd.filter((r) => r.x + r.w / 2 < 320).length;
-  assert.ok(left >= 12, `${left} spectator rects on the outer (left) side`);
+  const near = heads({ ...BASE, s: 288 });
+  const past = heads({ ...BASE, s: 330 }); // the same turn, group behind the camera
+  assert.equal(past.length, 0);
+  assert.ok(near.length >= 5, `${near.length} heads`);
+  assert.ok(near.every((r) => r.x + r.w / 2 < 320), 'the group stands on the outer (left) side');
 });
 
 test('the clock falls back to time and then to zero', () => {
-  const ctx = recordingCtx();
-  assert.doesNotThrow(() => renderLuge(ctx, { ...BASE, time: undefined, s: 1050 }));
+  const shot = (view) => {
+    const ctx = recordingCtx();
+    renderLuge(ctx, { ...BASE, s: 1050, phase: 'finished', ...view });
+    return ctx.rects;
+  };
+  assert.deepEqual(shot({ clock: undefined, time: 0.25 }), shot({ clock: 0.25, time: 0.25 }));
+  assert.deepEqual(shot({ clock: undefined, time: undefined }), shot({ clock: 0, time: 0 }));
+  assert.notDeepEqual(shot({ clock: 0 }), shot({ clock: 0.25 }));
 });
 
 test('the venue frames draw whole pixels without the retro colours', () => {
