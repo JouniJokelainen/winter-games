@@ -221,7 +221,7 @@ test('speedLimitAtLateral follows the sled position', () => {
   assert.equal(speedLimitAtLateral(0, 50, 0.5), Infinity);
 });
 
-test('more taps give more start speed up to the maximum, and 6-8 taps per second are enough for it', () => {
+test('more taps give more start speed up to the maximum, and about 4-5 taps per second are enough for most of it', () => {
   const push = (everyTicks) => {
     const state = createLugeState();
     for (let tick = 0; tick < 60 * 40 && state.phase !== 'running'; tick++) {
@@ -229,13 +229,16 @@ test('more taps give more start speed up to the maximum, and 6-8 taps per second
     }
     return state;
   };
-  const slow = push(15); // 4 taps per second
+  const three = push(20); // 3 taps per second
+  const four = push(15); // 4 taps per second
+  const five = push(12); // 5 taps per second
   const six = push(10); // 6 taps per second
   const eight = push(7); // 8.6 taps per second
   const twelve = push(5); // 12 taps per second
-  assert.ok(slow.time > six.time && six.time > eight.time, `${slow.time} ${six.time} ${eight.time}`);
-  assert.ok(slow.v < six.v - 1, `${slow.v} ${six.v}`);
-  assert.ok(six.v > 0.9 * LUGE_CONFIG.pushMax, `6 taps per second gave ${six.v}`);
-  assert.ok(Math.abs(eight.v - LUGE_CONFIG.pushMax) < 0.05);
-  assert.ok(Math.abs(twelve.v - eight.v) < 0.05, 'tapping faster than that adds nothing');
+  assert.ok(three.time > four.time && four.time > six.time, `${three.time} ${four.time} ${six.time}`);
+  assert.ok(three.v < four.v - 1, `${three.v} ${four.v}`);
+  assert.ok(four.v > 0.85 * LUGE_CONFIG.pushMax, `4 taps per second gave ${four.v}`);
+  assert.ok(five.v > 0.95 * LUGE_CONFIG.pushMax, `5 taps per second gave ${five.v}`);
+  assert.ok(Math.abs(six.v - LUGE_CONFIG.pushMax) < 0.05);
+  assert.ok(Math.abs(eight.v - six.v) < 0.05 && Math.abs(twelve.v - six.v) < 0.05, 'tapping faster than that adds nothing');
 });

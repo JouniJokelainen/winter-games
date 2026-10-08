@@ -2,7 +2,7 @@ import { curvatureAt, FINISH_S, RED_LINE_S } from './lugeTrack.js';
 
 // Distances in metres, speeds in m/s. Tuned with the bot test (tests/events/luge/bot.test.js).
 export const LUGE_CONFIG = {
-  speedPerTap: 1.3, // push speed in m/s per tap per second: 6.2 taps/s already gives the maximum
+  speedPerTap: 1.78, // push speed in m/s per tap per second: about 4.5 taps/s already give the maximum
   tapSmooth: 0.4, // seconds over which the tapping rate is averaged
   pushLag: 0.3, // seconds the push speed takes to follow the tapping rate
   pushMin: 1, // the runner never stops walking

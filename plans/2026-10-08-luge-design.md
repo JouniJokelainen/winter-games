@@ -9,7 +9,7 @@ Replaces the luge placeholder with a real event. Product rules: `suunnitelma.txt
 
 ## Rules
 
-- **Push phase:** Space starts the run. The player taps Space; the sim averages the tapping rate (`tapSmooth` 0.4 s) and the push speed follows `tapRate × 1.3 m/s` (lag 0.3 s), clamped to 1–8 m/s, so 6–8 taps per second already give the maximum start speed (6 taps/s 7.5 m/s, 8.6 taps/s 8.0 m/s, 4 taps/s 5.3 m/s). The phase ends when the sled reaches the red line (`RED_LINE_S`, 20 m from the start), where the rider hops on automatically. The push takes about 2.9 s at the maximum, 4.4 s at 4 taps/s and about 20 s with no tapping (the runner keeps walking at 1 m/s); the 45 s limit still applies to the whole run. The speed at the line is the entry speed of the slope.
+- **Push phase:** Space starts the run. The player taps Space; the sim averages the tapping rate (`tapSmooth` 0.4 s) and the push speed follows `tapRate × 1.78 m/s` (lag 0.3 s), clamped to 1–8 m/s, so about 4.5 taps per second already give the maximum start speed (3 taps/s 5.4 m/s in 4.2 s, 4 taps/s 7.0 m/s in 3.4 s, 5 taps/s 7.8 m/s in 3.0 s, 6 taps/s and more 8.0 m/s in 2.9 s). The phase ends when the sled reaches the red line (`RED_LINE_S`, 20 m from the start), where the rider hops on automatically. The push takes about 2.9 s at the maximum and about 20 s with one tap (the runner keeps walking at 1 m/s); the 45 s limit still applies to the whole run. The speed at the line is the entry speed of the slope.
 - **Slope:** the sled has track distance `s`, speed `v` and lateral position `lateral ∈ [-1, 1]` (−1 left rim, 0 centre, 1 right rim). Left/right arrows move `lateral`; Down brakes.
 - **Turns (curvature `k`, positive = right):** `outer = −lateral · sign(k)` (a right turn, k > 0, has its outer side on the left, lateral < 0). `outer > 0` speeds the sled up, `outer < 0` slows it, centre keeps speed. The effect scales with `|k|`. On straights lateral position has no effect on speed. In a turn the sled also drifts toward the outer wall (`lateral −= driftGain · v² · k · (1 − bankSupport · outer) · dt`), so the player has to steer inward; the pull back to the centre exists only on straights. The hold speed `√(lateralRate / (driftGain · |k| · (1 − bankSupport · outer)))` is the speed at which full steering still holds the line: 115 km/h on the centre line, 162 km/h on the outer side and 94 km/h on the inner side of the tightest turn. Above it the sled slides outward at the surplus rate.
 - **Crash (run rejected):** A crash happens only when the sled reaches the rim (`|lateral| ≥ 1`, `SUISTUIT RADALTA`) or a run is still going after 45 s (`AIKA YLITTYI`). There is no separate speed limit: too much speed in a turn makes the outward slide stronger than the steering, so the sled slides up the outer wall and over the rim unless the player brakes in time. A crash ends the run with `valid: false` and 0 points.
@@ -19,7 +19,7 @@ Replaces the luge placeholder with a real event. Product rules: `suunnitelma.txt
 
 ## Physics (values tuned by the bot test)
 
-- `speedPerTap 1.3` m/s per tap per second, `tapSmooth 0.4` s, `pushLag 0.3` s, `pushMin 1` m/s, `pushMax 8` m/s; gravity 7 m/s², drag 0.0022 /m; lateral rate 3.2 per second, return 0.4 per second on straights only; drift gain 0.07; bank support 0.5; turn gain 8 m/s² (at `|k| = 0.045`); brake 22 m/s²; time limit 45 s.
+- `speedPerTap 1.78` m/s per tap per second, `tapSmooth 0.4` s, `pushLag 0.3` s, `pushMin 1` m/s, `pushMax 8` m/s; gravity 7 m/s², drag 0.0022 /m; lateral rate 3.2 per second, return 0.4 per second on straights only; drift gain 0.07; bank support 0.5; turn gain 8 m/s² (at `|k| = 0.045`); brake 22 m/s²; time limit 45 s.
 
 ## Presentation
 
@@ -53,14 +53,14 @@ Other changes:
 
 - `lugeSim` unit tests:
   - Space starts the push phase; tapping raises the push speed up to the cap; it falls back without taps
-  - more taps give more start speed up to the maximum; 6–8 taps per second are enough for it; tapping faster (12 per second) adds nothing, tapping slowly (4 per second) costs about 1.7 s (relative to the good line)
+  - more taps give more start speed up to the maximum; about 4–5 taps per second are enough for most of it; tapping faster (12 per second) adds nothing, tapping slowly (3 per second) costs about 1.7 s (relative to the good line)
   - the hop at the red line passes the push speed to the slope
   - outer side speeds up, inner side slows down, centre keeps speed in a turn
   - Down brakes
   - crash at `|lateral| ≥ 1`; too much speed slides the sled over the outer rim, speed alone is never a crash
   - finish and time
 - **Bot test:** an automatic driver runs the real track through `stepLuge` at 1/60 s:
-  - good line (8.6 taps/s, outer line 0.35): 28.5–30.5 s (≈ 29.8); centre line 30.5–33 s (≈ 31.6); average 33–36.5 s (≈ 34.9); careless player (wide tolerance 0.12, short look-ahead 50 m) finishes 30–34 s (≈ 31.5); no steering or braking alone: crash; steering without braking slides over the rim at turn 7
+  - good line (8.6 taps/s, outer line 0.35): 28.5–30.5 s (≈ 29.7); centre line 30.5–33 s (≈ 31.5); average (3 taps/s) 33–36.5 s (≈ 35.0); careless player (wide tolerance 0.12, short look-ahead 50 m) finishes 30–34 s (≈ 31.4); lazy (3 taps/s) ≈ 1.7 s slower than good; no steering or braking alone: crash; steering without braking slides over the rim at turn 7
   - line bot (follows the marked racing line): 28–30.5 s, widest |lateral| < 0.75
 - Render test: every phase renders with whole-pixel rects only and without the old retro colours.
 - Event contract and flow tests keep passing; the server accepts luge attempts.

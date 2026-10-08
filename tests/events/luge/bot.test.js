@@ -81,10 +81,10 @@ test('a careless player with a wide steering tolerance and a short look-ahead st
   assert.ok(state.time > 30 && state.time < 34, `careless took ${state.time}`);
 });
 
-test('tapping slowly costs time, and tapping faster than 6-8 per second adds nothing', () => {
+test('tapping slowly costs time, and tapping faster than about 5 per second adds nothing', () => {
   const good = runBot(BOTS.good); // 8.6 taps per second
   const fast = runBot(BOTS.fast); // 12 taps per second
-  const lazy = runBot(BOTS.lazy); // 4 taps per second
+  const lazy = runBot(BOTS.lazy); // 3 taps per second
   assert.equal(fast.phase, 'finished');
   assert.equal(lazy.phase, 'finished');
   assert.ok(Math.abs(good.time - fast.time) < 0.3, `fast ${fast.time} vs good ${good.time}`);
