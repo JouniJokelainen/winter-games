@@ -38,9 +38,16 @@ function lerpHex(a, b, t) {
   return `#${part(0)}${part(1)}${part(2)}`;
 }
 
+const rgbaCache = new Map();
 const rgba = (hex, alpha) => {
-  const [r, g, b] = channels(hex);
-  return `rgba(${r},${g},${b},${alpha})`;
+  const key = `${hex}${alpha}`;
+  let color = rgbaCache.get(key);
+  if (color === undefined) {
+    const [r, g, b] = channels(hex);
+    color = `rgba(${r},${g},${b},${alpha})`;
+    rgbaCache.set(key, color);
+  }
+  return color;
 };
 
 // A soft filled ellipse: one rect per row.
@@ -52,10 +59,23 @@ function blob(ctx, cx, cy, rx, ry, color) {
   }
 }
 
+// Static colour tables, built once per horizon height (the gradient) or at load (the haze, the cap shades).
+const gradientCache = new Map();
+function gradientColors(horizon) {
+  let colors = gradientCache.get(horizon);
+  if (!colors) {
+    colors = Array.from({ length: horizon }, (_, y) => lerpHex(SKY_TOP, SKY_HORIZON, (y / horizon) ** 1.4));
+    gradientCache.set(horizon, colors);
+  }
+  return colors;
+}
+const HAZE_COLORS = Array.from({ length: 40 }, (_, i) => rgba(HAZE, (i / 39) ** 1.4 * 0.9));
+for (const ridge of RIDGES) ridge.capShade = lerpHex(ridge.cap, ridge.shade, 0.4);
+
 function drawGradient(ctx, horizon) {
+  const colors = gradientColors(horizon);
   for (let y = 0; y < horizon; y++) {
-    const t = (y / horizon) ** 1.4;
-    ctx.fillStyle = lerpHex(SKY_TOP, SKY_HORIZON, t);
+    ctx.fillStyle = colors[y];
     ctx.fillRect(0, y, W, 1);
   }
 }
@@ -68,14 +88,21 @@ function drawSun(ctx, heading) {
   blob(ctx, cx, cy, 9, 9, rgba('#fbf8f0', 0.55));
 }
 
+// Cloud shapes are fixed per layer: built once.
+for (const layer of CLOUD_LAYERS) {
+  layer.clouds = Array.from({ length: layer.count }, (_, i) => {
+    const rng = createRng(layer.seed * 131 + i);
+    const rx = Math.round(layer.rx[0] + rng() * (layer.rx[1] - layer.rx[0]));
+    const ry = Math.round(layer.ry[0] + rng() * (layer.ry[1] - layer.ry[0]));
+    const y = Math.round(layer.y[0] + rng() * (layer.y[1] - layer.y[0]));
+    const home = ((i + rng() * 0.8) / layer.count) * CLOUD_PERIOD;
+    return { rx, ry, y, home };
+  });
+}
+
 function drawClouds(ctx, heading, clock) {
   for (const layer of CLOUD_LAYERS) {
-    for (let i = 0; i < layer.count; i++) {
-      const rng = createRng(layer.seed * 131 + i);
-      const rx = Math.round(layer.rx[0] + rng() * (layer.rx[1] - layer.rx[0]));
-      const ry = Math.round(layer.ry[0] + rng() * (layer.ry[1] - layer.ry[0]));
-      const y = Math.round(layer.y[0] + rng() * (layer.y[1] - layer.y[0]));
-      const home = ((i + rng() * 0.8) / layer.count) * CLOUD_PERIOD;
+    for (const { rx, ry, y, home } of layer.clouds) {
       const raw = home - heading * 600 * layer.par - clock * layer.drift;
       const x = Math.round((((raw % CLOUD_PERIOD) + CLOUD_PERIOD) % CLOUD_PERIOD) - 180);
       // Flat shadowed underside, pale soft body, then a few brighter puffs on top.
@@ -116,7 +143,7 @@ function drawRidges(ctx, heading, horizon) {
         ctx.fillRect(sx, top, width, Math.min(bottom, Math.max(0, cap) + 6));
       }
       if (cap > 1) {
-        ctx.fillStyle = slope < 0 ? lerpHex(ridge.cap, ridge.shade, 0.4) : ridge.cap;
+        ctx.fillStyle = slope < 0 ? ridge.capShade : ridge.cap;
         ctx.fillRect(sx, top, width, Math.min(cap, bottom));
       }
     }
@@ -127,12 +154,13 @@ function drawRidges(ctx, heading, horizon) {
 function drawHaze(ctx, horizon) {
   for (let i = 0; i < 40; i++) {
     const y = horizon - 40 + i;
-    ctx.fillStyle = rgba(HAZE, (i / 39) ** 1.4 * 0.9);
+    ctx.fillStyle = HAZE_COLORS[i];
     ctx.fillRect(0, y, W, 1);
   }
 }
 
-export function drawLugeSky(ctx, { heading, clock, horizon }, drawForest) {
+export function drawLugeSky(ctx, { heading, clock: rawClock, horizon }, drawForest) {
+  const clock = rawClock ?? 0;
   drawGradient(ctx, horizon);
   drawSun(ctx, heading);
   drawClouds(ctx, heading, clock);
