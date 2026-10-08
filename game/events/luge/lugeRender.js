@@ -6,6 +6,7 @@ import { drawText } from '../../engine/font.js';
 import { PALETTE } from '../../engine/palette.js';
 import { createRng } from '../../engine/rng.js';
 import { drawForestLayer, drawPine, drawSnowfall } from '../../engine/scenery.js';
+import { drawLugeSky } from './lugeSky.js';
 import { drawRunner, drawSledAndRider, SLED_X_RANGE } from './lugeSled.js';
 import {
   bankFor, CAM_H, FOCAL, H, HALF_W, HORIZON, lookahead, MAX_Z, profileHeight, profileSlope, project, sample, SLED_Z, W, WALL_T,
@@ -14,7 +15,6 @@ import { FINISH_S, headingAt, racingLineAt, RED_LINE_S, TURNS } from './lugeTrac
 
 const HUD_HEIGHT = 44;
 const TEXT_SCALE = 2;
-const SKY_BANDS = [PALETTE.mist0, PALETTE.mist1, PALETTE.mist2, PALETTE.mist3, PALETTE.mist4];
 const FOG_TARGET = PALETTE.mist3;
 const FOG_START = 40;
 const LINE_DASH = 1.5; // metres per dash and per gap
@@ -87,21 +87,12 @@ function computeIce(slope, depth, band) {
 
 // ---- backdrop -----------------------------------------------------------------------------------
 
-function drawBackdrop(ctx, s) {
-  const bandHeight = HORIZON / SKY_BANDS.length;
-  SKY_BANDS.forEach((color, index) => {
-    ctx.fillStyle = color;
-    ctx.fillRect(0, Math.floor(index * bandHeight), W, Math.ceil(bandHeight));
+function drawBackdrop(ctx, s, clock) {
+  const heading = headingAt(s);
+  const camera = { x: heading * 600, y: 1200 };
+  drawLugeSky(ctx, { heading, clock, horizon: HORIZON }, () => {
+    drawForestLayer(ctx, camera, { parallax: 0.2, spacing: 26, minHeight: 12, maxHeight: 22, baseY: HORIZON - 14, seed: 31 });
   });
-  const camera = { x: headingAt(s) * 600, y: 1200 };
-  // Soft distant ridge.
-  for (let sx = 0; sx < W; sx++) {
-    const m = sx + camera.x * 0.08;
-    const top = Math.round(HORIZON - 24 - 10 * Math.sin(m * 0.012) - 6 * Math.sin(m * 0.031 + 2));
-    ctx.fillStyle = PALETTE.snowDark;
-    ctx.fillRect(sx, top, 1, HORIZON - top);
-  }
-  drawForestLayer(ctx, camera, { parallax: 0.2, spacing: 26, minHeight: 12, maxHeight: 22, baseY: HORIZON - 14, seed: 31 });
 }
 
 // ---- trackside objects --------------------------------------------------------------------------
@@ -438,7 +429,7 @@ export function renderLuge(ctx, view) {
   const s = view.s;
   const look = lookahead(s);
   const full = { ...view, bank: bankFor(sample(look.K, SLED_Z + 0.7)) };
-  drawBackdrop(ctx, s);
+  drawBackdrop(ctx, s, view.clock ?? view.time);
   drawRows(ctx, s, look, full);
   drawStartLine(ctx, s, look, full.bank);
   drawSledAndRider(ctx, look, full);

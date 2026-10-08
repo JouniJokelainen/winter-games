@@ -127,3 +127,10 @@ test('the start area frames draw whole pixels without the retro colours', () => 
     }
   }
 });
+
+test('the sky is a smooth gradient, not a few flat bands', () => {
+  const ctx = recordingCtx();
+  renderLuge(ctx, { ...BASE, s: 60 });
+  const colors = new Set(ctx.rects.filter((r) => r.y < 150 && r.w >= 600).map((r) => r.color));
+  assert.ok(colors.size > 12, `${colors.size} distinct full-width sky colours`);
+});
