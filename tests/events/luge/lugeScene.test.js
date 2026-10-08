@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FINISH_HOLD_SECONDS, LugeScene, buildAttempt } from '../../../game/events/luge/lugeScene.js';
-import { createLugeState } from '../../../game/events/luge/lugeSim.js';
+import { FINISH_HOLD_SECONDS, LugeScene, buildAttempt, curveOf } from '../../../game/events/luge/lugeScene.js';
+import { createLugeState, LUGE_CONFIG } from '../../../game/events/luge/lugeSim.js';
+import { curvatureAt } from '../../../game/events/luge/lugeTrack.js';
 import { fakeInput } from '../../helpers/fakeInput.js';
 import { BOTS, botInput } from '../../helpers/lugeBot.js';
 import { PALETTE } from '../../../game/engine/palette.js';
@@ -148,4 +149,32 @@ test('the racing line is shown in practice and hidden in a competition', () => {
     return ctx.rects.filter((r) => r.color === PALETTE.orange).length;
   };
   assert.ok(lineRects('practice') > lineRects('competition') + 20);
+});
+
+test('the hop progress runs from 0 to 1 over 0.3 s after the hop event and is 1 without a hop', () => {
+  const { scene } = makeScene();
+  assert.equal(scene.hopProgress(), 1);
+  let tick = 0;
+  while (scene.state.phase !== 'running' && tick < 60 * 30) {
+    assert.equal(scene.hopProgress(), 1);
+    scene.update(1 / 60, botInput(scene.state, BOTS.good, tick));
+    tick += 1;
+  }
+  assert.equal(scene.state.phase, 'running');
+  assert.equal(scene.hopClock, 0);
+  assert.equal(scene.hopProgress(), 0);
+  for (let i = 0; i < 9; i++) scene.update(1 / 60, botInput(scene.state, BOTS.good, tick++));
+  assert.ok(Math.abs(scene.hopProgress() - 0.5) < 1e-6, `${scene.hopProgress()}`);
+  for (let i = 0; i < 9; i++) scene.update(1 / 60, botInput(scene.state, BOTS.good, tick++));
+  assert.ok(Math.abs(scene.hopProgress() - 1) < 1e-6, `${scene.hopProgress()}`);
+  for (let i = 0; i < 30; i++) scene.update(1 / 60, botInput(scene.state, BOTS.good, tick++));
+  assert.equal(scene.hopProgress(), 1);
+});
+
+test('curveOf is the track curvature divided by kMax, clamped to ±1', () => {
+  assert.equal(curveOf(30), 0); // the straight before the first turn
+  assert.ok(Math.abs(curveOf(675) - 1) < 1e-9); // inside the tightest right turn (k = kMax)
+  // The track has no left turn as tight as kMax: check the sign and the scaling on the tightest left turn.
+  assert.ok(Math.abs(curveOf(955) - curvatureAt(955) / LUGE_CONFIG.kMax) < 1e-9 && curveOf(955) < -0.6);
+  for (let s = 0; s < 1100; s += 2.5) assert.ok(Math.abs(curveOf(s)) <= 1, `${s}`);
 });

@@ -45,3 +45,33 @@ test('the racing line is drawn in orange dashes only when asked for', () => {
   const view = { ...BASE, s: 120 }; // inside the first turn
   assert.ok(orange({ ...view, showLine: true }) > orange(view) + 20);
 });
+
+test('the runner, the hop and the lean draw whole pixels without the retro colours', () => {
+  const frames = [];
+  for (const stride of [0, 0.25, 0.5, 0.75]) {
+    for (const speedKmh of [0, 28]) frames.push({ ...VIEWS.push, stride, speedKmh });
+  }
+  for (const hop of [0, 0.25, 0.5, 0.75, 1]) frames.push({ ...BASE, s: 20 - 3.4, hop, curve: 0 });
+  for (const curve of [-1, 0, 1]) frames.push({ ...BASE, s: 108, curve, lateral: -0.4 * curve });
+  for (const view of frames) {
+    const ctx = recordingCtx();
+    renderLuge(ctx, view);
+    const name = JSON.stringify({ stride: view.stride, hop: view.hop, curve: view.curve });
+    assert.ok(ctx.rects.length > 2000, `${name}: ${ctx.rects.length} rects`);
+    for (const r of ctx.rects) assert.ok([r.x, r.y, r.w, r.h].every(Number.isInteger), `${name} ${JSON.stringify(r)}`);
+    const used = new Set(ctx.rects.map((r) => r.color));
+    for (const color of RETRO_COLORS) assert.ok(!used.has(color), `${name} uses ${color}`);
+  }
+});
+
+test('the hopping rider and the leaning rider differ from the plain lying rider', () => {
+  const pixels = (view) => {
+    const ctx = recordingCtx();
+    renderLuge(ctx, view);
+    return ctx.rects.map((r) => `${r.x},${r.y},${r.color}`).join('|');
+  };
+  const ride = { ...BASE, s: 60 };
+  assert.notEqual(pixels({ ...ride, hop: 0.5 }), pixels(ride));
+  assert.notEqual(pixels({ ...ride, curve: 1 }), pixels(ride));
+  assert.equal(pixels({ ...ride, hop: 1 }), pixels(ride));
+});

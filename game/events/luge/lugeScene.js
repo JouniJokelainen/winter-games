@@ -1,10 +1,11 @@
 import { formatTime } from '../../core/format.js';
 import { ATTEMPTS_PER_EVENT } from '../../core/rules.js';
 import { lugePoints } from '../../core/scoring.js';
+import { HOP_SECONDS } from './lugePose.js';
 import { SLED_Z } from './lugeProjection.js';
 import { renderLuge } from './lugeRender.js';
-import { createLugeState, speedLimitAtLateral, stepLuge } from './lugeSim.js';
-import { turnNumber } from './lugeTrack.js';
+import { createLugeState, LUGE_CONFIG, speedLimitAtLateral, stepLuge } from './lugeSim.js';
+import { curvatureAt, turnNumber } from './lugeTrack.js';
 
 export const FINISH_HOLD_SECONDS = 1;
 
@@ -35,6 +36,11 @@ const BANNERS = {
   crashed: 'HYLÄTTY',
 };
 
+// The track curvature at s as a share of the tightest turn (kMax), -1 (left) … 1 (right): drives the rider's lean.
+export function curveOf(s) {
+  return Math.max(-1, Math.min(1, curvatureAt(s) / LUGE_CONFIG.kMax));
+}
+
 export function buildAttempt(state) {
   const time = Math.max(MIN_ATTEMPT_TIME, Math.round(state.time * 100) / 100);
   const timeLine = `AIKA ${formatTime(time)}`;
@@ -58,10 +64,12 @@ export class LugeScene {
     this.holdTime = 0;
     this.sinceWarning = WARNING_INTERVAL;
     this.done = false;
+    this.hopClock = null; // seconds since the hop onto the sled at the red line; null before it
   }
 
   update(dt, input) {
     this.time += dt;
+    if (this.hopClock !== null && this.hopClock < HOP_SECONDS) this.hopClock += dt;
     if (this.done) return;
     const { state } = this;
     if (state.phase === 'ready' || state.phase === 'pushing' || state.phase === 'running') {
@@ -74,6 +82,7 @@ export class LugeScene {
       stepLuge(state, controls, dt);
       if (controls.pushes > 0 && state.phase === 'pushing') this.game.audio.playSfx('push');
       for (const event of state.events) {
+        if (event.type === 'hop') this.hopClock = 0;
         for (const sound of EVENT_SOUNDS[event.type] ?? []) this.game.audio.playSfx(sound);
       }
       this.warn(dt);
@@ -84,6 +93,11 @@ export class LugeScene {
       this.done = true;
       this.onComplete(buildAttempt(state));
     }
+  }
+
+  // Progress of the hop onto the sled, 0 … 1; 1 when no hop is under way.
+  hopProgress() {
+    return this.hopClock === null ? 1 : Math.min(1, this.hopClock / HOP_SECONDS);
   }
 
   limit() {
@@ -138,6 +152,8 @@ export class LugeScene {
       stride: (state.s / STRIDE_LENGTH) % 1,
       showRedLine: pushing,
       showLine: this.showLine,
+      hop: this.hopClock === null ? undefined : this.hopProgress(),
+      curve: curveOf(state.s),
     });
   }
 }
