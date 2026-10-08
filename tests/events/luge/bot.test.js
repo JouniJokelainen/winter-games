@@ -80,3 +80,13 @@ test('a careless player with a wide steering tolerance and a short look-ahead st
   assert.equal(state.phase, 'finished');
   assert.ok(state.time > 30 && state.time < 34, `careless took ${state.time}`);
 });
+
+test('tapping faster saves time and tapping slowly costs time, with the same driving line', () => {
+  const good = runBot(BOTS.good);
+  const fast = runBot(BOTS.fast);
+  const lazy = runBot(BOTS.lazy);
+  assert.equal(fast.phase, 'finished');
+  assert.equal(lazy.phase, 'finished');
+  assert.ok(good.time - fast.time > 0.8, `fast ${fast.time} vs good ${good.time}`);
+  assert.ok(lazy.time - good.time > 3, `lazy ${lazy.time} vs good ${good.time}`);
+});

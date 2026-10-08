@@ -2,10 +2,10 @@ import { curvatureAt, FINISH_S, RED_LINE_S } from './lugeTrack.js';
 
 // Distances in metres, speeds in m/s. Tuned with the bot test (tests/events/luge/bot.test.js).
 export const LUGE_CONFIG = {
-  pushImpulse: 0.3, // speed added per Space press while pushing
-  pushDecay: 0.8, // speed lost per second while pushing
+  pushGain: 1, // speed added per Space press while pushing
+  pushRate: 1.6, // share of the speed lost per second while pushing: the speed settles at taps per second · pushGain / pushRate
   pushMin: 1, // the runner never stops walking
-  pushMax: 4,
+  pushMax: 8,
   gravity: 11,
   drag: 0.0022,
   brake: 22,
@@ -63,7 +63,7 @@ export function createLugeState() {
 function stepPush(state, controls, dt) {
   const c = LUGE_CONFIG;
   state.time += dt;
-  state.v = Math.min(c.pushMax, Math.max(c.pushMin, state.v + controls.pushes * c.pushImpulse - c.pushDecay * dt));
+  state.v = Math.min(c.pushMax, Math.max(c.pushMin, state.v + controls.pushes * c.pushGain - c.pushRate * state.v * dt));
   state.s += state.v * dt;
   if (state.s >= RED_LINE_S) {
     state.phase = 'running';

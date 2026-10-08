@@ -1,6 +1,6 @@
 // Prototype luge track. Curvature is in 1/m along the distance s (positive = right turn); every turn is a
 // trapezoid: the curvature ramps in, holds, and ramps out.
-export const RED_LINE_S = 15;
+export const RED_LINE_S = 22;
 export const FINISH_S = 1060;
 
 export const TURNS = [

@@ -27,7 +27,7 @@ test('stays ready until the first push, then starts pushing', () => {
 test('pushes raise the speed up to the cap and it decays without them', () => {
   const state = Object.assign(createLugeState(), { phase: 'pushing', v: 2 });
   stepLuge(state, { ...NONE, pushes: 1 }, DT);
-  assert.ok(state.v > 2 + LUGE_CONFIG.pushImpulse - 0.05);
+  assert.ok(state.v > 2 + LUGE_CONFIG.pushGain - 0.1);
   stepLuge(state, { ...NONE, pushes: 50 }, DT);
   assert.equal(state.v, LUGE_CONFIG.pushMax);
   const before = state.v;
@@ -55,7 +55,7 @@ test('without tapping the runner keeps walking and still reaches the red line', 
   stepLuge(state, { ...NONE, pushes: 1 }, DT);
   for (let tick = 0; tick < 60 * 30 && state.phase === 'pushing'; tick++) stepLuge(state, NONE, DT);
   assert.equal(state.phase, 'running');
-  assert.ok(state.time > 12 && state.time < 18, `push took ${state.time}`);
+  assert.ok(state.time > 18 && state.time < 26, `push took ${state.time}`);
 });
 
 test('in a turn the outer side speeds up, the inner side slows down, the centre is in between', () => {
@@ -220,4 +220,20 @@ test('speedLimitAtLateral follows the sled position', () => {
   assert.equal(speedLimitAtLateral(s, 20, 0), vSafe(k));
   assert.ok(speedLimitAtLateral(s, 20, -0.8) > speedLimitAtLateral(s, 20, 0.8));
   assert.equal(speedLimitAtLateral(0, 50, 0.5), Infinity);
+});
+
+test('the faster the player taps, the shorter the push and the higher the start speed', () => {
+  const push = (everyTicks) => {
+    const state = createLugeState();
+    for (let tick = 0; tick < 60 * 40 && state.phase !== 'running'; tick++) {
+      stepLuge(state, { ...NONE, pushes: tick % everyTicks === 0 ? 1 : 0 }, DT);
+    }
+    return state;
+  };
+  const fast = push(5);
+  const normal = push(7);
+  const slow = push(10);
+  assert.ok(fast.time < normal.time && normal.time < slow.time, `${fast.time} ${normal.time} ${slow.time}`);
+  assert.ok(fast.v > normal.v + 1 && normal.v > slow.v + 0.5, `${fast.v} ${normal.v} ${slow.v}`);
+  assert.ok(fast.v <= LUGE_CONFIG.pushMax);
 });

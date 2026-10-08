@@ -8,8 +8,10 @@ import { fakeInput } from './fakeInput.js';
 export const BOTS = {
   good: { pushEvery: 7, look: 120, margin: 0.97, outer: 0.35, dead: 0.04 },
   centre: { pushEvery: 7, look: 120, margin: 0.97, outer: 0, dead: 0.04 },
-  average: { pushEvery: 14, look: 60, margin: 0.8, outer: 0.2, dead: 0.04 },
-  careless: { pushEvery: 9, look: 50, margin: 0.9, outer: 0.1, dead: 0.12 },
+  average: { pushEvery: 9, look: 60, margin: 0.8, outer: 0.2, dead: 0.04 },
+  careless: { pushEvery: 8, look: 50, margin: 0.9, outer: 0.1, dead: 0.12 },
+  fast: { pushEvery: 5, look: 120, margin: 0.97, outer: 0.35, dead: 0.04 },
+  lazy: { pushEvery: 15, look: 120, margin: 0.97, outer: 0.35, dead: 0.04 },
 };
 
 const TURN_CURVATURE = 0.004;
