@@ -3,7 +3,7 @@
 // like the track, so perspective and the roll on the wall come for free; the limbs are tapered and shaded with a
 // light from the upper left (light / base / dark / deep tones and a rim highlight). Colours of SKIER_STYLES.classic.
 import { PALETTE } from '../../engine/palette.js';
-import { fillTaper } from '../../engine/skeleton.js';
+import { fillTaperRuns, pixelRuns } from '../../engine/skeleton.js';
 import { SKIER_STYLES } from '../skiJump/skier.js';
 import { add as offset, GROUND_H, hopPose, lerpPoint as lerpP, liePose, PUSH_GRIP, runPose, SIDE_GRIP, unit } from './lugePose.js';
 import { profileHeight, profileSlope, project, SLED_Z } from './lugeProjection.js';
@@ -124,7 +124,7 @@ function painter(ctx, look, place) {
   const taper = (a, b, ra, rb, set, decorate) => {
     const pa = at(a);
     const pb = at(b);
-    fillTaper(ctx, pa[0], pa[1], pb[0], pb[1], ra * pa[2], rb * pb[2], cylinder(set, pa[0], pa[1], pb[0], pb[1], decorate));
+    fillTaperRuns(ctx, pa[0], pa[1], pb[0], pb[1], ra * pa[2], rb * pb[2], cylinder(set, pa[0], pa[1], pb[0], pb[1], decorate));
     return [pa, pb];
   };
   const ellipse = (cx, cz, halfX, halfZ, h, color) => {
@@ -196,7 +196,9 @@ function drawBib(ctx, x, y, scale) {
 
 // The helmet: a shaded shell with a light stripe down the back, a specular highlight up-left, the visor edge
 // wrapping round the sides and a dark rim at the bottom edge. `tilt` rolls it (+ = toward the right).
-function drawHelmet(ctx, cx, cy, radius, tilt) {
+// The pixels of a row are merged into runs of one colour.
+function drawHelmet(target, cx, cy, radius, tilt) {
+  const ctx = pixelRuns(target);
   const rx = radius;
   const ry = radius * 1.06;
   const cos = Math.cos(tilt);
@@ -226,6 +228,7 @@ function drawHelmet(ctx, cx, cy, radius, tilt) {
       ctx.fillRect(x, y, 1, 1);
     }
   }
+  ctx.flush();
 }
 
 // Direction the sole of a foot faces (pose space): the toe direction turned 90° down in the leg's plane.

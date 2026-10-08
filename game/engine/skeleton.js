@@ -58,6 +58,51 @@ export function fillTaper(ctx, ax, ay, bx, by, radiusA, radiusB, colorAt) {
   }
 }
 
+// A drawing context that merges consecutive same-colour pixels of a row into one fillRect(x, y, w, 1) on `ctx`
+// and sets ctx.fillStyle only when it changes. Paints exactly the pixels it is given (opaque colours, or any colour
+// when pixels do not overlap). Call flush() when done.
+export function pixelRuns(ctx) {
+  let color = null;
+  let set = null;
+  let runX = 0;
+  let runY = 0;
+  let runW = 0;
+  const flush = () => {
+    if (runW === 0) return;
+    if (set !== color) ctx.fillStyle = set = color;
+    ctx.fillRect(runX, runY, runW, 1);
+    runW = 0;
+  };
+  return {
+    fillStyle: null,
+    fillRect(x, y, w, h) {
+      if (w === 1 && h === 1) {
+        if (runW > 0 && y === runY && x === runX + runW && this.fillStyle === color) {
+          runW += 1;
+          return;
+        }
+        flush();
+        color = this.fillStyle;
+        runX = x;
+        runY = y;
+        runW = 1;
+        return;
+      }
+      flush();
+      if (set !== this.fillStyle) ctx.fillStyle = set = this.fillStyle;
+      ctx.fillRect(x, y, w, h);
+    },
+    flush,
+  };
+}
+
+// fillTaper with the pixels of each row merged into runs of one colour: the same pixels, far fewer draw calls.
+export function fillTaperRuns(ctx, ax, ay, bx, by, radiusA, radiusB, colorAt) {
+  const runs = pixelRuns(ctx);
+  fillTaper(runs, ax, ay, bx, by, radiusA, radiusB, colorAt);
+  runs.flush();
+}
+
 export function solid(color) {
   return () => color;
 }
