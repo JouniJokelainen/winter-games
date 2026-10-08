@@ -139,7 +139,8 @@ function drawObject(ctx, object, look, s, clock) {
   switch (object.type) {
     case 'pine': {
       const height = Math.round(object.height * m);
-      if (height >= 4 && height < 190) drawLugePine(ctx, sx, base, height, { seed: object.seed, tint, fog });
+      // Cull only trees entirely outside the screen sideways (the crown is about 0.34 of the height wide each way).
+      if (height >= 4 && Math.abs(sx - W / 2) <= W / 2 + Math.round(height * 0.4)) drawLugePine(ctx, sx, base, height, { seed: object.seed, tint, fog });
       break;
     }
     case 'pole': {

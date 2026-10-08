@@ -8,11 +8,25 @@ import { W } from './lugeProjection.js';
 const identity = (color) => color;
 const SHADOW = 'rgba(96,102,124,0.22)';
 const SHADOW_CORE = 'rgba(80,86,108,0.16)';
-const FAR_MIST = 'rgba(214,213,223,0.5)';
+const MIST_ROWS = Array.from({ length: 18 }, (_, i) => `rgba(214,213,223,${(0.05 + (i / 17) * 0.4).toFixed(3)})`);
+const DEEP_GREEN = darken(PALETTE.pineDark, 0.72);
+const H_CANVAS = 512;
+
+function darken(color, factor) {
+  const part = (i) => Math.round(parseInt(color.slice(1 + i * 2, 3 + i * 2), 16) * factor).toString(16).padStart(2, '0');
+  return `#${part(0)}${part(1)}${part(2)}`;
+}
+
+// Stable per-(tree, row) value in 0..1: a row keeps its jag while the tree grows on approach.
+function hash01(seed, row) {
+  let h = Math.imul(seed + 0x9e3779b9, 374761393) ^ Math.imul(row + 1, 668265263);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
 
 // Draws one pine with its foot at (x, baseY) and the given pixel height. `tint` blends a colour toward the fog.
-// `detail` (0..1) switches on the jagged edge, snow load, trunk and shadow as the tree gets near.
-export function drawLugePine(ctx, x, baseY, height, { seed = 0, tint = identity, fog = 0, lean = 0 } = {}) {
+// Trees of 34 px and more get the jagged edge, snow load, trunk and shadow.
+export function drawLugePine(ctx, x, baseY, height, { seed = 0, tint = identity, fog = 0 } = {}) {
   if (height < 3) return;
   const near = height >= 34;
   const trunkH = near ? Math.max(4, Math.round(height * 0.085)) : Math.max(1, Math.round(height * 0.05));
@@ -23,7 +37,7 @@ export function drawLugePine(ctx, x, baseY, height, { seed = 0, tint = identity,
   const tiers = height < 14 ? 1 : Math.max(2, Math.min(8, Math.round(height / 13)));
   const rng = createRng(seed * 977 + 13);
   const maxHalf = Math.max(1, Math.round(height * (0.22 + rng() * 0.12)));
-  const snowy = near ? Array.from({ length: tiers }, () => rng() < 0.55) : [];
+  const snowyTiers = near ? Math.floor(rng() * 256) : 0; // bit t set: tier t carries snow
 
   if (near) {
     const rx = Math.round(maxHalf * 1.45);
@@ -35,19 +49,17 @@ export function drawLugePine(ctx, x, baseY, height, { seed = 0, tint = identity,
       ctx.fillRect(x - half + Math.round(rx * 0.18), baseY - dy, half * 2, 1);
     }
   }
-  if (trunkH > 1 || height > 8) {
-    ctx.fillStyle = tint(PALETTE.wood8);
-    ctx.fillRect(x - Math.floor(trunkW / 2), baseY - trunkH, trunkW, trunkH);
-    if (trunkW > 1) {
-      ctx.fillStyle = tint(PALETTE.trunk);
-      ctx.fillRect(x - Math.floor(trunkW / 2), baseY - trunkH, Math.ceil(trunkW / 2), trunkH);
-    }
+  ctx.fillStyle = tint(PALETTE.wood8);
+  ctx.fillRect(x - Math.floor(trunkW / 2), baseY - trunkH, trunkW, trunkH);
+  if (trunkW > 1) {
+    ctx.fillStyle = tint(PALETTE.trunk);
+    ctx.fillRect(x - Math.floor(trunkW / 2), baseY - trunkH, Math.ceil(trunkW / 2), trunkH);
   }
 
   const light = tint(PALETTE.pineLight);
   const mid = tint(PALETTE.pineMid);
   const dark = tint(PALETTE.pineDark);
-  const deep = tint(mixDark(PALETTE.pineDark));
+  const deep = tint(DEEP_GREEN);
   const snow = tint(PALETTE.snowLight);
   const snowShade = tint(PALETTE.snowDark);
   const tierH = crown / tiers;
@@ -56,11 +68,12 @@ export function drawLugePine(ctx, x, baseY, height, { seed = 0, tint = identity,
     const u = (row - t * tierH) / tierH;
     const cone = 0.12 + 0.88 * (row / crown);
     const flare = 0.7 + 0.3 * u;
+    const y = crownBottom - crown + row;
+    if (y < 0 || y >= H_CANVAS) continue;
     let half = Math.round(maxHalf * cone * flare);
-    if (near && row > 2) half += Math.round(rng() * 2 - 0.6);
+    if (near && row > 2) half += Math.round(hash01(seed, row - crown) * 2 - 0.6); // jag counted from the foot: stable as the tree grows
     half = Math.max(0, half);
-    const y = crownBottom - crown + row + (near ? 0 : 0);
-    const cx = x + (lean ? Math.round(lean * (1 - row / crown)) : 0);
+    const cx = x;
     const left = cx - half;
     const width = half * 2 + 1;
     // Shadow side (right) first, then the mid tone and the lit left side on top.
@@ -76,8 +89,8 @@ export function drawLugePine(ctx, x, baseY, height, { seed = 0, tint = identity,
       }
     }
     // Snow load on the upper rows of each tier below the first.
-    if (near && t > 0 && snowy[t] && u < 0.16 && half >= 3) {
-      const reach = Math.round(half * (0.5 + rng() * 0.3));
+    if (near && t > 0 && ((snowyTiers >> t) & 1) === 1 && u < 0.16 && half >= 3) {
+      const reach = Math.round(half * (0.5 + hash01(seed + 7, row - crown) * 0.3));
       ctx.fillStyle = snow;
       ctx.fillRect(cx - reach, y, Math.max(2, Math.round(reach * 1.1)), 1);
       ctx.fillStyle = snowShade;
@@ -87,11 +100,6 @@ export function drawLugePine(ctx, x, baseY, height, { seed = 0, tint = identity,
       ctx.fillRect(cx - Math.round(half * 0.5), y, Math.max(1, half), 1);
     }
   }
-}
-
-function mixDark(color) {
-  const part = (i) => Math.round(parseInt(color.slice(1 + i * 2, 3 + i * 2), 16) * 0.72).toString(16).padStart(2, '0');
-  return `#${part(0)}${part(1)}${part(2)}`;
 }
 
 // Slow noise in 0..1 that makes clearings and groups: a few sines with random phases, plus a hash cell term.
@@ -122,12 +130,13 @@ export function drawForestBackdrop(ctx, { heading, horizon, tint }) {
       const height = Math.round(layer.minH + rng() * rng() * (layer.maxH - layer.minH) * (0.6 + 0.6 * place));
       const rise = Math.round(rng() * layer.rise);
       if (keep < layer.thin + (0.55 - place) * 0.7) continue;
-      drawLugePine(ctx, sx, horizon - rise, height, { seed: layer.seed + i, tint: (c) => tint(c, layer.fog + rng() * 0.08), fog: layer.fog });
+      const fog = layer.fog + rng() * 0.08; // one fog amount per tree keeps its tonal order
+      drawLugePine(ctx, sx, horizon - rise, height, { seed: layer.seed + i, tint: (c) => tint(c, fog), fog });
     }
     if (layer.name === 'far') {
       // Mist rolling through the far trees: stronger toward the foot.
-      for (let i = 0; i < 18; i++) {
-        ctx.fillStyle = `rgba(214,213,223,${(0.05 + (i / 17) * 0.4).toFixed(3)})`;
+      for (let i = 0; i < MIST_ROWS.length; i++) {
+        ctx.fillStyle = MIST_ROWS[i];
         ctx.fillRect(0, horizon - 20 + i, W, 1);
       }
     }
@@ -142,13 +151,14 @@ export function forestObjects(first, last, { edge, margins }) {
     for (const side of [-1, 1]) {
       const place = density(side > 0 ? 5 : 9, i * 12);
       if (place < 0.3) continue; // clearing
-      const rng = createRng(2400 + i * 2 + (side > 0 ? 1 : 0));
+      const slot = i * 2 + (side > 0 ? 1 : 0);
+      const rng = createRng(2400 + slot);
       const groupSize = place > 0.62 ? 3 : place > 0.45 ? 2 : 1;
       for (let g = 0; g < groupSize; g++) {
         const along = i * 12 + rng() * 12;
         const outer = edge + 3.5 + rng() * 6 + (rng() < 0.4 ? rng() * 9 : 0);
         if (margins.some((m) => along > m.from && along < m.to && (m.side === 0 || m.side === side))) continue;
-        list.push({ type: 'pine', along, x: side * outer, height: 6 + rng() * rng() * 7, seed: i * 5 + g + (side > 0 ? 3 : 0) });
+        list.push({ type: 'pine', along, x: side * outer, height: 6 + rng() * rng() * 7, seed: slot * 4 + g });
       }
     }
   }
