@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createLugeState, stepLuge } from '../../../game/events/luge/lugeSim.js';
 import { lugePoints } from '../../../game/core/scoring.js';
-import { BOTS, runBot } from '../../helpers/lugeBot.js';
+import { BOTS, botControls, runBot } from '../../helpers/lugeBot.js';
 
 const DT = 1 / 60;
 
@@ -47,13 +47,23 @@ test('holding the brake for the whole run times out', () => {
   assert.equal(state.reason, 'time');
 });
 
-test('driving without any input crashes in a turn', () => {
+test('driving without any input slides over the rim in a turn', () => {
   const state = createLugeState();
   for (let tick = 0; tick < 60 * 120 && state.phase !== 'crashed' && state.phase !== 'finished'; tick++) {
     stepLuge(state, { left: false, right: false, down: false, pushes: tick % 7 === 0 ? 1 : 0 }, DT);
   }
   assert.equal(state.phase, 'crashed');
-  assert.equal(state.reason, 'speed');
+  assert.equal(state.reason, 'wall');
+});
+
+test('steering well but never braking slides over the rim at the tightest turn', () => {
+  const state = createLugeState();
+  for (let tick = 0; tick < 60 * 120 && state.phase !== 'crashed' && state.phase !== 'finished'; tick++) {
+    const controls = botControls(state, { ...BOTS.good, margin: 99 }, tick);
+    stepLuge(state, controls, DT);
+  }
+  assert.equal(state.phase, 'crashed');
+  assert.equal(state.reason, 'wall');
 });
 
 test('holding a steering key crashes into the rim', () => {

@@ -6,18 +6,16 @@ export const LUGE_CONFIG = {
   pushDecay: 0.8, // speed lost per second while pushing
   pushMin: 1, // the runner never stops walking
   pushMax: 4,
-  gravity: 7.8,
+  gravity: 8.3,
   drag: 0.0022,
   brake: 22,
   lateralRate: 2.6, // lateral units per second while an arrow is held
   straightReturn: 0.4, // lateral units per second back to the centre on a straight with no arrow held
-  driftGain: 0.025, // outward slide in a turn: lateral units per second = driftGain · v² · |k|
+  driftGain: 0.0464, // outward slide in a turn: lateral units per second = driftGain · v² · |k| · (1 - bankSupport · outer)
+  bankSupport: 0.5, // the banked outer wall carries the sled (less slide), the inner side does not (more slide)
   turnGain: 8, // speed change (m/s²) at kMax with the sled fully on the outer (+) or inner (-) side
   kMax: 0.045,
-  safeA: 56, // vSafe(k) = sqrt(safeA / |k|) on the centre line
-  outerSafe: 0.4, // the safe speed grows by this share on the fully outer side
-  innerSafe: 0.2, // and shrinks by this share on the fully inner side
-  kSafeMin: 0.004, // gentler curves have no speed limit and no drift
+  kSafeMin: 0.004, // below this curvature a bend counts as straight: no look-ahead limit, pull to the centre
   lookStep: 5,
   timeLimit: 45, // a run still going after this many seconds is rejected
 };
@@ -27,16 +25,17 @@ function outerSide(k, lateral) {
   return -lateral * Math.sign(k);
 }
 
+// The highest speed at which full steering (lateralRate) still holds the line: the outward slide equals the steering.
 export function vSafeOuter(k, outer) {
-  const share = outer >= 0 ? LUGE_CONFIG.outerSafe : LUGE_CONFIG.innerSafe;
-  return Math.sqrt(LUGE_CONFIG.safeA / Math.abs(k)) * (1 + share * outer);
+  const c = LUGE_CONFIG;
+  return Math.sqrt(c.lateralRate / (c.driftGain * Math.abs(k) * (1 - c.bankSupport * outer)));
 }
 
 export function vSafe(k, lateral = 0) {
   return vSafeOuter(k, outerSide(k, lateral));
 }
 
-// Lowest safe speed over the next `distance` metres of track, assuming the sled is at `outer` (-1..1) in every
+// Lowest speed at which full steering still holds the line over the next `distance` metres of track, assuming the sled is at `outer` (-1..1) in every
 // turn; Infinity when no turn is in range.
 export function speedLimitAhead(s, distance, outer = 0) {
   let limit = Infinity;
@@ -47,7 +46,7 @@ export function speedLimitAhead(s, distance, outer = 0) {
   return limit;
 }
 
-// Lowest safe speed over the next `distance` metres if the sled stays at `lateral`; Infinity when no turn is in range.
+// Lowest speed at which full steering still holds the line over the next `distance` metres if the sled stays at `lateral`; Infinity when no turn is in range.
 export function speedLimitAtLateral(s, distance, lateral) {
   let limit = Infinity;
   for (let d = 0; d <= distance; d += LUGE_CONFIG.lookStep) {
@@ -82,9 +81,8 @@ function steer(state, controls, k, dt) {
   const c = LUGE_CONFIG;
   const direction = (controls.right ? 1 : 0) - (controls.left ? 1 : 0);
   state.lateral += direction * c.lateralRate * dt;
-  if (Math.abs(k) > c.kSafeMin) {
-    state.lateral -= c.driftGain * state.v * state.v * k * dt;
-  } else if (!direction) {
+  state.lateral -= c.driftGain * state.v * state.v * k * (1 - c.bankSupport * outerSide(k, state.lateral)) * dt;
+  if (Math.abs(k) <= c.kSafeMin && !direction) {
     state.lateral -= Math.sign(state.lateral) * Math.min(Math.abs(state.lateral), c.straightReturn * dt);
   }
 }
@@ -103,8 +101,6 @@ function stepRun(state, controls, dt) {
   if (Math.abs(state.lateral) >= 1) {
     state.lateral = Math.sign(state.lateral);
     crash(state, 'wall');
-  } else if (Math.abs(k) > c.kSafeMin && state.v > vSafe(k, state.lateral)) {
-    crash(state, 'speed');
   } else if (state.s >= FINISH_S) {
     state.time -= (state.s - FINISH_S) / state.v;
     state.s = FINISH_S;

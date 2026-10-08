@@ -15,10 +15,11 @@ const WARNING_SPEED_SHARE = 0.92;
 const WARNING_INTERVAL = 0.5;
 const MS_TO_KMH = 3.6;
 const STRIDE_LENGTH = 1.4; // metres of pushing per leg cycle
+const SLIDE_OVER_RIM = 0.3;
+const SLIDE_SECONDS = 0.5;
 
 const CRASH_LABEL = {
-  wall: 'OSUIT LAITAAN',
-  speed: 'LIIAN KOVA VAUHTI',
+  wall: 'SUISTUIT RADALTA',
   time: 'AIKA YLITTYI',
 };
 
@@ -108,6 +109,14 @@ export class LugeScene {
     }
   }
 
+  // A crashed sled keeps sliding outward over the rim during the hold; otherwise the lateral position is clamped to the trough.
+  displayLateral() {
+    const { state } = this;
+    const lateral = Math.max(-1, Math.min(1, state.lateral));
+    if (state.phase !== 'crashed' || state.reason !== 'wall') return lateral;
+    return lateral * (1 + SLIDE_OVER_RIM * Math.min(1, this.holdTime / SLIDE_SECONDS));
+  }
+
   render(ctx) {
     const { state } = this;
     const limit = this.limit();
@@ -117,7 +126,7 @@ export class LugeScene {
       time: state.time,
       clock: this.time,
       speedKmh: state.v * MS_TO_KMH,
-      lateral: Math.max(-1, Math.min(1, state.lateral)),
+      lateral: this.displayLateral(),
       phase: pushing ? 'push' : state.phase === 'finished' ? 'finished' : 'ride',
       turn: turnNumber(state.s),
       label: this.label,

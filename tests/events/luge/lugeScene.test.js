@@ -54,7 +54,7 @@ test('a crash gives a rejected attempt and plays the crash sounds', () => {
   assert.equal(completed[0].valid, false);
   assert.equal(completed[0].points, 0);
   assert.ok(completed[0].summary.includes('HYLÄTTY'));
-  assert.ok(completed[0].summary.includes('LIIAN KOVA VAUHTI'));
+  assert.ok(completed[0].summary.includes('SUISTUIT RADALTA'));
   assert.ok(sounds.includes('crash') && sounds.includes('fail'));
 });
 
@@ -62,7 +62,7 @@ test('buildAttempt scores finished runs and labels the crash reasons', () => {
   const finished = { ...createLugeState(), phase: 'finished', time: 32.4 };
   assert.deepEqual(buildAttempt(finished), { valid: true, points: 45, time: 32.4, summary: ['AIKA 32,40 S', 'PISTEET 45'] });
   const wall = { ...createLugeState(), phase: 'crashed', reason: 'wall', time: 12 };
-  assert.deepEqual(buildAttempt(wall), { valid: false, points: 0, time: 12, summary: ['AIKA 12,00 S', 'HYLÄTTY', 'OSUIT LAITAAN'] });
+  assert.deepEqual(buildAttempt(wall), { valid: false, points: 0, time: 12, summary: ['AIKA 12,00 S', 'HYLÄTTY', 'SUISTUIT RADALTA'] });
   const slow = { ...createLugeState(), phase: 'crashed', reason: 'time', time: 45 };
   assert.deepEqual(buildAttempt(slow), { valid: false, points: 0, time: 45, summary: ['AIKA 45,00 S', 'HYLÄTTY', 'AIKA YLITTYI'] });
 });
@@ -124,4 +124,16 @@ test('the speed limit shown follows the lateral position of the sled', () => {
   scene.state.lateral = 0.8; // inner side
   const inner = scene.limit();
   assert.ok(outer > inner, `${outer} ${inner}`);
+});
+
+test('a crashed sled slides over the rim during the hold', () => {
+  const { scene } = makeScene();
+  Object.assign(scene.state, { phase: 'crashed', reason: 'wall', s: 662, lateral: 1 });
+  assert.equal(scene.displayLateral(), 1);
+  scene.holdTime = 0.5;
+  assert.ok(scene.displayLateral() > 1.2);
+  scene.state.lateral = -1;
+  assert.ok(scene.displayLateral() < -1.2);
+  scene.state.phase = 'running';
+  assert.equal(scene.displayLateral(), -1);
 });

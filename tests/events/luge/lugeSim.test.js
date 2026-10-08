@@ -110,17 +110,32 @@ test('touching the rim is a crash', () => {
   assert.deepEqual(state.events, [{ type: 'crash' }]);
 });
 
-test('too much speed in a turn is a crash, a safe speed is not', () => {
-  const k = TURNS[6].k;
-  const limit = vSafe(k);
-  assert.ok(limit > 33 && limit < 38, `vSafe(${k}) = ${limit}`);
-  const fast = running({ s: TIGHTEST_TURN, v: limit + 5 });
-  stepLuge(fast, NONE, DT);
+test('the hold speed of the tightest turn is about 127 km/h on the centre line', () => {
+  const limit = vSafe(TURNS[6].k);
+  assert.ok(limit > 33 && limit < 38, `vSafe(${TURNS[6].k}) = ${limit}`);
+});
+
+test('too much speed slides the sled over the outer rim even when steering, a safe speed holds', () => {
+  const drive = (v) => {
+    const state = running({ s: TIGHTEST_TURN - 15, v, lateral: 0 });
+    for (let i = 0; i < 90 && state.phase === 'running' && state.s < TIGHTEST_TURN + 40; i++) {
+      stepLuge(state, { ...NONE, left: state.lateral > 0, right: state.lateral < 0 }, DT); // keep the sled in the middle
+    }
+    return state;
+  };
+  const fast = drive(50);
   assert.equal(fast.phase, 'crashed');
-  assert.equal(fast.reason, 'speed');
-  const safe = running({ s: TIGHTEST_TURN, v: limit - 5 });
-  stepLuge(safe, NONE, DT);
+  assert.equal(fast.reason, 'wall');
+  assert.equal(fast.lateral, -1, 'a right turn: the sled leaves over the left (outer) rim');
+  const safe = drive(25);
   assert.equal(safe.phase, 'running');
+  assert.ok(Math.abs(safe.lateral) < 0.5);
+});
+
+test('speed alone never ends a run: a fast sled with no steering is stopped only by the rim', () => {
+  const state = running({ s: TIGHTEST_TURN, v: 60, lateral: 0 });
+  stepLuge(state, NONE, DT);
+  assert.equal(state.phase, 'running');
 });
 
 test('speedLimitAhead finds the tightest turn in range', () => {
@@ -192,11 +207,11 @@ test('a run still going after the time limit is rejected as too slow', () => {
   assert.deepEqual(state.events, [{ type: 'crash' }]);
 });
 
-test('the inner side loses less safe speed than the outer side gains', () => {
+test('the outer side holds more speed than the centre and the inner side less', () => {
   const k = TURNS[0].k;
   const centre = vSafeOuter(k, 0);
-  assert.ok(Math.abs(vSafeOuter(k, 1) / centre - 1.4) < 1e-9);
-  assert.ok(Math.abs(vSafeOuter(k, -1) / centre - 0.8) < 1e-9);
+  assert.ok(Math.abs(vSafeOuter(k, 1) / centre - 1 / Math.sqrt(0.5)) < 1e-9);
+  assert.ok(Math.abs(vSafeOuter(k, -1) / centre - 1 / Math.sqrt(1.5)) < 1e-9);
 });
 
 test('speedLimitAtLateral follows the sled position', () => {
