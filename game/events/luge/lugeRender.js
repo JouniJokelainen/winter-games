@@ -6,6 +6,7 @@ import { drawText } from '../../engine/font.js';
 import { PALETTE } from '../../engine/palette.js';
 import { createRng } from '../../engine/rng.js';
 import { drawSnowfall } from '../../engine/scenery.js';
+import { drawCachedBackdrop } from './lugeBackdrop.js';
 import { drawForestBackdrop, drawLugePine, forestObjects } from './lugeForest.js';
 import { lineOverlay, paintRuns, runsCover, SAMPLES } from './lugeLines.js';
 import { drawLugeSky } from './lugeSky.js';
@@ -169,10 +170,24 @@ function drawLip(ctx, y, outerSx, innerSx, side, tint) {
 
 // ---- backdrop -----------------------------------------------------------------------------------
 
+const BACKDROP_TINT = (color, amount) => mix(color, FOG_TARGET, amount);
+// Smallest and largest heading on the track (headingAt is piecewise linear between whole metres).
+const HEADING_RANGE = (() => {
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (let s = 0; s <= FINISH_S + 200; s += 1) {
+    lo = Math.min(lo, headingAt(s));
+    hi = Math.max(hi, headingAt(s));
+  }
+  return [lo, hi];
+})();
+
+// From the offscreen cache when a canvas can be made, otherwise drawn directly (tests, node).
 function drawBackdrop(ctx, s, clock) {
   const heading = headingAt(s);
+  if (drawCachedBackdrop(ctx, { heading, clock, horizon: HORIZON, tint: BACKDROP_TINT, headingRange: HEADING_RANGE })) return;
   drawLugeSky(ctx, { heading, clock, horizon: HORIZON }, () => {
-    drawForestBackdrop(ctx, { heading, horizon: HORIZON, tint: (color, amount) => mix(color, FOG_TARGET, amount) });
+    drawForestBackdrop(ctx, { heading, horizon: HORIZON, tint: BACKDROP_TINT });
   });
 }
 

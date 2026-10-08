@@ -72,7 +72,7 @@ function gradientColors(horizon) {
 const HAZE_COLORS = Array.from({ length: 40 }, (_, i) => rgba(HAZE, (i / 39) ** 1.4 * 0.9));
 for (const ridge of RIDGES) ridge.capShade = lerpHex(ridge.cap, ridge.shade, 0.4);
 
-function drawGradient(ctx, horizon) {
+export function drawGradient(ctx, horizon) {
   const colors = gradientColors(horizon);
   for (let y = 0; y < horizon; y++) {
     ctx.fillStyle = colors[y];
@@ -80,12 +80,20 @@ function drawGradient(ctx, horizon) {
   }
 }
 
-function drawSun(ctx, heading) {
-  const cx = Math.round(W * 0.68 - heading * HEADING_PX * 0.03);
-  const cy = 104;
+export const SUN_REACH = [78, 62]; // half width and half height of the widest glow
+export function sunCenter(heading) {
+  return [Math.round(W * 0.68 - heading * HEADING_PX * 0.03), 104];
+}
+
+export function drawSunAt(ctx, cx, cy) {
   for (const [r, a] of [[78, 0.05], [58, 0.06], [42, 0.08], [28, 0.1], [18, 0.14]]) blob(ctx, cx, cy, r, Math.round(r * 0.8), rgba(SUN_COLOR, a));
   blob(ctx, cx, cy, 13, 13, rgba(SUN_COLOR, 0.7));
   blob(ctx, cx, cy, 9, 9, rgba('#fbf8f0', 0.55));
+}
+
+function drawSun(ctx, heading) {
+  const [cx, cy] = sunCenter(heading);
+  drawSunAt(ctx, cx, cy);
 }
 
 // Cloud shapes are fixed per layer: built once.
@@ -100,17 +108,25 @@ for (const layer of CLOUD_LAYERS) {
   });
 }
 
+export { CLOUD_LAYERS, RIDGES };
+
+// Screen x (whole pixels) of a cloud's centre.
+export function cloudX(layer, cloud, heading, clock) {
+  const raw = cloud.home - heading * HEADING_PX * layer.par - clock * layer.drift;
+  return Math.round((((raw % CLOUD_PERIOD) + CLOUD_PERIOD) % CLOUD_PERIOD) - 180);
+}
+
+// One cloud centred at (x, y): a flat shadowed underside, a pale soft body, then a few brighter puffs on top.
+export function drawCloud(ctx, layer, { rx, ry }, x, y) {
+  blob(ctx, x, y + Math.round(ry * 0.5), Math.round(rx * 1.08), Math.max(2, Math.round(ry * 0.8)), rgba(layer.dark, layer.alpha * 0.45));
+  blob(ctx, x, y, rx, ry, rgba(layer.light, layer.alpha * 0.55));
+  blob(ctx, x - Math.round(rx * 0.15), y - Math.round(ry * 0.3), Math.round(rx * 0.7), Math.round(ry * 0.8), rgba(layer.light, layer.alpha * 0.6));
+  blob(ctx, x + Math.round(rx * 0.35), y - Math.round(ry * 0.55), Math.round(rx * 0.4), Math.max(2, Math.round(ry * 0.7)), rgba('#ffffff', layer.alpha * 0.35));
+}
+
 function drawClouds(ctx, heading, clock) {
   for (const layer of CLOUD_LAYERS) {
-    for (const { rx, ry, y, home } of layer.clouds) {
-      const raw = home - heading * HEADING_PX * layer.par - clock * layer.drift;
-      const x = Math.round((((raw % CLOUD_PERIOD) + CLOUD_PERIOD) % CLOUD_PERIOD) - 180);
-      // Flat shadowed underside, pale soft body, then a few brighter puffs on top.
-      blob(ctx, x, y + Math.round(ry * 0.5), Math.round(rx * 1.08), Math.max(2, Math.round(ry * 0.8)), rgba(layer.dark, layer.alpha * 0.45));
-      blob(ctx, x, y, rx, ry, rgba(layer.light, layer.alpha * 0.55));
-      blob(ctx, x - Math.round(rx * 0.15), y - Math.round(ry * 0.3), Math.round(rx * 0.7), Math.round(ry * 0.8), rgba(layer.light, layer.alpha * 0.6));
-      blob(ctx, x + Math.round(rx * 0.35), y - Math.round(ry * 0.55), Math.round(rx * 0.4), Math.max(2, Math.round(ry * 0.7)), rgba('#ffffff', layer.alpha * 0.35));
-    }
+    for (const cloud of layer.clouds) drawCloud(ctx, layer, cloud, cloudX(layer, cloud, heading, clock), cloud.y);
   }
 }
 
@@ -134,35 +150,42 @@ function cachedHeight(ridge, m) {
   return (table[i] = ridgeHeight(ridge, m));
 }
 
-function drawRidges(ctx, heading, horizon) {
-  for (const ridge of RIDGES) {
-    const shift = Math.round(heading * HEADING_PX * ridge.par);
-    const capLine = ridge.base + ridge.amp * 0.3; // heights above this carry snow
-    for (let sx = 0; sx < W; sx += ridge.step) {
-      const m = sx + shift;
-      const h = cachedHeight(ridge, m);
-      const slope = cachedHeight(ridge, m + 5) - cachedHeight(ridge, m - 5);
-      const top = horizon - Math.round(h);
-      const width = Math.min(ridge.step, W - sx);
-      const bottom = horizon - top;
-      ctx.fillStyle = ridge.body;
-      ctx.fillRect(sx, top, width, bottom);
-      const cap = Math.round((h - capLine) * 1.5 + 2 + 2.5 * Math.sin(m * 0.23) + 2 * Math.sin(m * 0.071));
-      // Shadowed flank just under the crest on the side facing away from the sun.
-      if (slope < 0) {
-        ctx.fillStyle = ridge.shade;
-        ctx.fillRect(sx, top, width, Math.min(bottom, Math.max(0, cap) + 6));
-      }
-      if (cap > 1) {
-        ctx.fillStyle = slope < 0 ? ridge.capShade : ridge.cap;
-        ctx.fillRect(sx, top, width, Math.min(cap, bottom));
-      }
+export function ridgeShift(ridge, heading) {
+  return Math.round(heading * HEADING_PX * ridge.par);
+}
+
+// One ridge in columns of `ridge.step` px from x = 0 to `width`, standing on `horizon`; column x shows position
+// x + shift. Opaque, no taller than ridge.base + ridge.amp.
+export function drawRidge(ctx, ridge, shift, horizon, width = W) {
+  const capLine = ridge.base + ridge.amp * 0.3; // heights above this carry snow
+  for (let sx = 0; sx < width; sx += ridge.step) {
+    const m = sx + shift;
+    const h = cachedHeight(ridge, m);
+    const slope = cachedHeight(ridge, m + 5) - cachedHeight(ridge, m - 5);
+    const top = horizon - Math.round(h);
+    const columnW = Math.min(ridge.step, width - sx);
+    const bottom = horizon - top;
+    ctx.fillStyle = ridge.body;
+    ctx.fillRect(sx, top, columnW, bottom);
+    const cap = Math.round((h - capLine) * 1.5 + 2 + 2.5 * Math.sin(m * 0.23) + 2 * Math.sin(m * 0.071));
+    // Shadowed flank just under the crest on the side facing away from the sun.
+    if (slope < 0) {
+      ctx.fillStyle = ridge.shade;
+      ctx.fillRect(sx, top, columnW, Math.min(bottom, Math.max(0, cap) + 6));
+    }
+    if (cap > 1) {
+      ctx.fillStyle = slope < 0 ? ridge.capShade : ridge.cap;
+      ctx.fillRect(sx, top, columnW, Math.min(cap, bottom));
     }
   }
 }
 
+function drawRidges(ctx, heading, horizon) {
+  for (const ridge of RIDGES) drawRidge(ctx, ridge, ridgeShift(ridge, heading), horizon);
+}
+
 // Mist over the lower ridges and the seam to the snow plain.
-function drawHaze(ctx, horizon) {
+export function drawHaze(ctx, horizon) {
   for (let i = 0; i < 40; i++) {
     const y = horizon - 40 + i;
     ctx.fillStyle = HAZE_COLORS[i];

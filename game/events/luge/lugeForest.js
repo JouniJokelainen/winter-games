@@ -116,29 +116,42 @@ const LAYERS = [
   { name: 'mid', par: 0.2, spacing: 9, minH: 26, maxH: 54, rise: 2, fog: 0.26, seed: 57, thin: 0.2, step: 1 },
 ];
 
+export const FOREST_LAYERS = LAYERS;
+export const FOREST_REACH = 72; // no backdrop tree pixel is higher than this above the horizon
+
+export function forestOffset(layer, heading) {
+  return heading * HEADING_PX * layer.par;
+}
+
+// The trees of one layer whose x falls in 0..width when the layer is slid by `offset` pixels.
+export function drawForestLayer(ctx, layer, { offset, horizon, tint, width = W }) {
+  const first = Math.floor(offset / layer.spacing) - 2;
+  const count = Math.ceil(width / layer.spacing) + 5;
+  for (let i = first; i < first + count; i++) {
+    const rng = createRng(layer.seed + i * 7919);
+    const sx = Math.round(i * layer.spacing - offset + (rng() - 0.5) * layer.spacing * 1.4);
+    const place = density(layer.seed, i * layer.spacing);
+    const keep = rng();
+    const height = Math.round(layer.minH + rng() * rng() * (layer.maxH - layer.minH) * (0.6 + 0.6 * place));
+    const rise = Math.round(rng() * layer.rise);
+    if (keep < layer.thin + (0.55 - place) * 0.7) continue;
+    const fog = layer.fog + rng() * 0.08; // one fog amount per tree keeps its tonal order
+    drawLugePine(ctx, sx, horizon - rise, height, { seed: layer.seed + i, tint: (c) => tint(c, fog), fog });
+  }
+}
+
+// Mist rolling through the far trees: stronger toward the foot. Drawn between the far and the middle layer.
+export function drawForestMist(ctx, horizon) {
+  for (let i = 0; i < MIST_ROWS.length; i++) {
+    ctx.fillStyle = MIST_ROWS[i];
+    ctx.fillRect(0, horizon - 20 + i, W, 1);
+  }
+}
+
 export function drawForestBackdrop(ctx, { heading, horizon, tint }) {
   for (const layer of LAYERS) {
-    const offset = heading * HEADING_PX * layer.par;
-    const first = Math.floor(offset / layer.spacing) - 2;
-    const count = Math.ceil(W / layer.spacing) + 5;
-    for (let i = first; i < first + count; i++) {
-      const rng = createRng(layer.seed + i * 7919);
-      const sx = Math.round(i * layer.spacing - offset + (rng() - 0.5) * layer.spacing * 1.4);
-      const place = density(layer.seed, i * layer.spacing);
-      const keep = rng();
-      const height = Math.round(layer.minH + rng() * rng() * (layer.maxH - layer.minH) * (0.6 + 0.6 * place));
-      const rise = Math.round(rng() * layer.rise);
-      if (keep < layer.thin + (0.55 - place) * 0.7) continue;
-      const fog = layer.fog + rng() * 0.08; // one fog amount per tree keeps its tonal order
-      drawLugePine(ctx, sx, horizon - rise, height, { seed: layer.seed + i, tint: (c) => tint(c, fog), fog });
-    }
-    if (layer.name === 'far') {
-      // Mist rolling through the far trees: stronger toward the foot.
-      for (let i = 0; i < MIST_ROWS.length; i++) {
-        ctx.fillStyle = MIST_ROWS[i];
-        ctx.fillRect(0, horizon - 20 + i, W, 1);
-      }
-    }
+    drawForestLayer(ctx, layer, { offset: forestOffset(layer, heading), horizon, tint });
+    if (layer.name === 'far') drawForestMist(ctx, horizon);
   }
 }
 
