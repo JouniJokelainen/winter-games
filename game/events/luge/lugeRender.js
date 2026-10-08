@@ -8,6 +8,7 @@ import { createRng } from '../../engine/rng.js';
 import { drawSnowfall } from '../../engine/scenery.js';
 import { drawForestBackdrop, drawLugePine, forestObjects } from './lugeForest.js';
 import { drawLugeSky } from './lugeSky.js';
+import { drawVenueObject, venueObjects } from './lugeVenue.js';
 import { drawRunner, drawSledAndRider, SLED_X_RANGE } from './lugeSled.js';
 import {
   bankFor, CAM_H, FOCAL, H, HALF_W, HORIZON, lookahead, MAX_Z, profileHeight, profileSlope, project, sample, SLED_Z, W, WALL_T,
@@ -25,7 +26,6 @@ const RIM_X = HALF_W + WALL_T / 2; // centre of the rim cap
 const START_LINE_S = -0.9; // white start line: just behind the runner, near the bottom of the ready frame
 const BARRIER_S = -0.3; // start barriers on the rims, beside the sled
 const HOP_BAND_HALF = 0.45; // metres; grows with distance so the band stays a few pixels thick far away
-const SPECTATOR_COLORS = [PALETTE.suitPink, PALETTE.guide, PALETTE.wood2, PALETTE.pineLight, PALETTE.concrete1, PALETTE.red];
 
 // Stretches where no near tree stands: the start area, the finish and the outer side of every turn (venue objects).
 const FOREST_MARGINS = [
@@ -109,13 +109,11 @@ function buildScenery(s) {
   const first = Math.floor((s + 2) / 12);
   const last = Math.floor((s + MAX_Z) / 12);
   for (let i = first; i <= last; i++) {
-    const rng = createRng(500 + i);
     const along = i * 12;
     const edge = HALF_W + WALL_T;
-    rng(); rng();
-    if (i % 3 === 0) list.push({ type: 'crowd', along: along + rng() * 8, x: edge + 1.6 + rng() * 5, seed: i });
     if (i % 3 === 1) list.push({ type: 'pole', along, x: edge + 0.9, height: 6 });
   }
+  list.push(...venueObjects(s + 2, s + MAX_Z));
   list.push(...forestObjects(first, last, { edge: HALF_W + WALL_T, margins: FOREST_MARGINS }));
   for (const turn of TURNS) {
     const outer = turn.k > 0 ? -1 : 1;
@@ -130,13 +128,14 @@ function buildScenery(s) {
   return list.filter((o) => o.along - s > 2.3 && o.along - s < MAX_Z - 2).sort((a, b) => b.along - a.along);
 }
 
-function drawObject(ctx, object, look, s) {
+function drawObject(ctx, object, look, s, clock) {
   const z = object.along - s;
   const m = FOCAL / z;
   const sx = Math.round(W / 2 + (sample(look.L, z) + object.x) * m);
   const base = Math.round(HORIZON + CAM_H * m);
   const fog = clamp((z - FOG_START) / FOG_SPAN, 0, 0.8);
   const tint = (color) => mix(color, FOG_TARGET, fog);
+  if (drawVenueObject(ctx, object, { sx, base, m, tint, z, clock, look, s })) return;
   switch (object.type) {
     case 'pine': {
       const height = Math.round(object.height * m);
@@ -162,24 +161,6 @@ function drawObject(ctx, object, look, s) {
       ctx.fillRect(sx - Math.floor(board / 2), top - high, board, high);
       ctx.fillStyle = tint(PALETTE.black);
       for (let i = 0; i < 4; i++) ctx.fillRect(sx - Math.floor(board / 2) + Math.round((i * board) / 4) + 1, top - high, Math.max(1, Math.round(board / 8)), high);
-      break;
-    }
-    case 'crowd': {
-      const rng = createRng(900 + object.seed);
-      for (let i = 0; i < 3; i++) {
-        const offset = Math.round((i - 1) * 0.75 * m);
-        const body = Math.round(0.5 * m);
-        const high = Math.round(1.0 * m);
-        const x = sx + offset;
-        ctx.fillStyle = tint(PALETTE.concrete3);
-        ctx.fillRect(x - Math.floor(body / 2), base - Math.round(0.5 * m), body, Math.round(0.5 * m));
-        ctx.fillStyle = tint(SPECTATOR_COLORS[Math.floor(rng() * SPECTATOR_COLORS.length)]);
-        ctx.fillRect(x - Math.floor(body / 2), base - Math.round(0.5 * m) - high, body, high);
-        ctx.fillStyle = tint(PALETTE.skin);
-        ctx.fillRect(x - Math.floor(body / 4), base - Math.round(0.5 * m) - high - Math.round(0.3 * m), Math.round(body / 2), Math.round(0.3 * m));
-        ctx.fillStyle = tint(SPECTATOR_COLORS[Math.floor(rng() * SPECTATOR_COLORS.length)]);
-        ctx.fillRect(x - Math.floor(body / 4), base - Math.round(0.5 * m) - high - Math.round(0.42 * m), Math.round(body / 2), Math.max(1, Math.round(0.14 * m)));
-      }
       break;
     }
     case 'hut': {
@@ -292,6 +273,19 @@ function maskedCtx(ctx, z, clip) {
     fillStyle: '#000',
     fillRect(x, y, w, h) {
       ctx.fillStyle = this.fillStyle;
+      // Fast path: when no row of the rect meets the rim silhouette, it is one plain rect.
+      let clear = true;
+      for (let row = y; row < y + h; row++) {
+        const c = clip[row];
+        if (c && z > c.z && x + w > Math.round(c.left) && x < Math.round(c.right)) {
+          clear = false;
+          break;
+        }
+      }
+      if (clear) {
+        ctx.fillRect(x, y, w, h);
+        return;
+      }
       for (let row = y; row < y + h; row++) {
         const c = clip[row];
         if (!c || z <= c.z) {
@@ -315,7 +309,7 @@ function drawRows(ctx, s, look, view) {
     while (next < objects.length) {
       const z = objects[next].along - s;
       if (HORIZON + CAM_H * (FOCAL / z) > y) break;
-      drawObject(maskedCtx(ctx, z, clip), objects[next], look, s);
+      drawObject(maskedCtx(ctx, z, clip), objects[next], look, s, view.clock);
       next += 1;
     }
   };
@@ -416,14 +410,14 @@ function drawStartLine(ctx, s, look, bank) {
 function drawHud(ctx, view) {
   ctx.fillStyle = PALETTE.night;
   ctx.fillRect(0, 0, W, HUD_HEIGHT);
-  drawText(ctx, `AIKA ${formatTime(view.time)}`, 8, 6, { scale: TEXT_SCALE, color: PALETTE.white });
+  drawText(ctx, `AIKA ${formatTime(view.time ?? 0)}`, 8, 6, { scale: TEXT_SCALE, color: PALETTE.white });
   drawText(ctx, `${Math.round(view.speedKmh)} KM/H`, 8, 24, { scale: TEXT_SCALE, color: PALETTE.white });
   const barX = 120;
   const barWidth = 150;
   const maxKmh = 200;
   ctx.fillStyle = PALETTE.darkGrey;
   ctx.fillRect(barX, 26, barWidth, 10);
-  ctx.fillStyle = view.warning && Math.floor((view.clock ?? view.time) * 6) % 2 === 0 ? PALETTE.orange : PALETTE.paper;
+  ctx.fillStyle = view.warning && Math.floor(view.clock * 6) % 2 === 0 ? PALETTE.orange : PALETTE.paper;
   ctx.fillRect(barX, 26, Math.round((barWidth * Math.min(view.speedKmh, maxKmh)) / maxKmh), 10);
   if (view.limitKmh) {
     ctx.fillStyle = PALETTE.red;
@@ -435,9 +429,10 @@ function drawHud(ctx, view) {
 
 export function renderLuge(ctx, view) {
   const s = view.s;
+  const clock = view.clock ?? view.time ?? 0;
   const look = lookahead(s);
-  const full = { ...view, bank: bankFor(sample(look.K, SLED_Z + 0.7)) };
-  drawBackdrop(ctx, s, view.clock ?? view.time);
+  const full = { ...view, clock, bank: bankFor(sample(look.K, SLED_Z + 0.7)) };
+  drawBackdrop(ctx, s, clock);
   drawRows(ctx, s, look, full);
   drawStartLine(ctx, s, look, full.bank);
   drawSledAndRider(ctx, look, full);
@@ -448,8 +443,7 @@ export function renderLuge(ctx, view) {
     ctx.fillStyle = PALETTE.paper;
     for (let i = 0; i < 16; i++) ctx.fillRect(Math.round(x + (rng() - 0.5) * 70), Math.round(y - rng() * 28), 2, 2);
   }
-  const clock = view.clock ?? view.time;
   drawSnowfall(ctx, clock);
-  drawHud(ctx, view);
+  drawHud(ctx, full);
   if (view.banner) drawBlinking(ctx, view.banner, W / 2, 96, clock, { scale: TEXT_SCALE, color: PALETTE.paper, shadow: PALETTE.slate });
 }
