@@ -1,10 +1,6 @@
-import { PlaceholderEventScene } from './placeholderEvent.js';
+import { LugeScene } from './luge/lugeScene.js';
 import { SkiJumpScene } from './skiJump/skiJumpScene.js';
 import { SlalomScene } from './slalom/slalomScene.js';
-
-function placeholder(id, name) {
-  return (options) => new PlaceholderEventScene({ ...options, eventId: id, name });
-}
 
 export const EVENTS = {
   skiJump: {
@@ -23,6 +19,6 @@ export const EVENTS = {
     id: 'luge',
     name: 'OHJASKELKKAILU',
     instructions: ['VÄLILYÖNTI = LÄHTÖ JA TYÖNTÖ', 'NUOLET = OHJAUS', 'NUOLI ALAS = JARRU'],
-    createScene: placeholder('luge', 'OHJASKELKKAILU'),
+    createScene: (options) => new LugeScene(options),
   },
 };

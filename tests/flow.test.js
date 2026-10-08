@@ -4,6 +4,7 @@ import { SceneManager } from '../game/engine/sceneManager.js';
 import { createFlow } from '../game/flow.js';
 import { SkiJumpScene } from '../game/events/skiJump/skiJumpScene.js';
 import { SlalomScene } from '../game/events/slalom/slalomScene.js';
+import { LugeScene } from '../game/events/luge/lugeScene.js';
 import { inputForEvent } from './helpers/eventDrivers.js';
 import { fakeInput } from './helpers/fakeInput.js';
 
@@ -33,6 +34,7 @@ function finishAttempt(game) {
   let eventId = 'other';
   if (eventScene instanceof SkiJumpScene) eventId = 'skiJump';
   else if (eventScene instanceof SlalomScene) eventId = 'slalom';
+  else if (eventScene instanceof LugeScene) eventId = 'luge';
   for (let i = 0; i < 60 * 120 && game.scenes.current === eventScene; i++) {
     game.scenes.update(1 / 60, inputForEvent(eventId, eventScene, i));
   }

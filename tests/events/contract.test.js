@@ -21,7 +21,7 @@ function playAttempt(eventId, attemptNumber) {
 }
 
 test('every registered event produces attempts the server accepts', () => {
-  const validAttempts = { skiJump: 0, slalom: 0 };
+  const validAttempts = { skiJump: 0, slalom: 0, luge: 0 };
   for (let round = 0; round < 20; round++) {
     const competition = new Competition('AKU');
     for (const eventId of competition.eventIds) {

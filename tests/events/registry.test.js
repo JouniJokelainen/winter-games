@@ -15,3 +15,8 @@ test('registry has every event with name, instructions and a scene factory', () 
     assert.equal(typeof scene.render, 'function');
   }
 });
+
+test('luge is played with the real luge scene', () => {
+  const scene = EVENTS.luge.createScene({ game: { audio: { playSfx() {} } }, mode: 'practice', attemptNumber: 1, onComplete() {} });
+  assert.equal(scene.constructor.name, 'LugeScene');
+});
