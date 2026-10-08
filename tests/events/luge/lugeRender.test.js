@@ -93,8 +93,8 @@ test('the start line is drawn across the ice behind the runner in the ready fram
     const rows = new Map();
     const ctx = recordingCtx();
     renderLuge(ctx, view);
-    for (const r of ctx.rects) if (r.color === PALETTE.paper && r.y > 400 && r.h === 1) rows.set(r.y, (rows.get(r.y) ?? 0) + r.w);
-    return Math.max(0, ...rows.values());
+    for (const r of ctx.rects) if (r.color === PALETTE.paper && r.y > 400) rows.set(r.y, (rows.get(r.y) ?? 0) + r.w * r.h);
+    return [...rows.values()].reduce((a, b) => a + b, 0);
   };
   assert.ok(paperRow({ ...VIEWS.push, showRedLine: false }) > 100);
   assert.equal(paperRow({ ...BASE, s: 300 }) > 100, false);
@@ -110,7 +110,7 @@ test('start barriers stand on both rims in the ready frame', () => {
   const wood = (view) => {
     const ctx = recordingCtx();
     renderLuge(ctx, view);
-    return ctx.rects.filter((r) => r.color === PALETTE.wood2 && r.y > 250 && (r.x < 160 || r.x > 480));
+    return ctx.rects.filter((r) => r.color === PALETTE.concrete1 && r.y > 250 && (r.x < 160 || r.x > 480));
   };
   assert.ok(wood({ ...VIEWS.push, showRedLine: false }).length >= 2);
   assert.equal(wood({ ...BASE, s: 300 }).length, 0);

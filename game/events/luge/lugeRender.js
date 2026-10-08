@@ -22,7 +22,6 @@ const LINE_WIDTH = 0.1; // metres
 const FOG_SPAN = 150;
 const RIM_X = HALF_W + WALL_T / 2; // centre of the rim cap
 const START_LINE_S = -0.9; // white start line: just behind the runner, near the bottom of the ready frame
-const START_LINE_HALF = 0.17; // metres
 const BARRIER_S = -0.3; // start barriers on the rims, beside the sled
 const HOP_BAND_HALF = 0.45; // metres; grows with distance so the band stays a few pixels thick far away
 const SPECTATOR_COLORS = [PALETTE.suitPink, PALETTE.guide, PALETTE.wood2, PALETTE.pineLight, PALETTE.concrete1, PALETTE.red];
@@ -125,7 +124,7 @@ function buildScenery(s) {
   }
   for (const side of [-1, 1]) {
     list.push({ type: 'flag', along: RED_LINE_S, x: side * RIM_X, height: 1.2 });
-    list.push({ type: 'barrier', along: BARRIER_S, x: side * RIM_X, height: 0.6 });
+    list.push({ type: 'barrier', along: BARRIER_S, x: side * RIM_X, height: 0.4 });
   }
   list.push({ type: 'hut', along: 11, x: -(HALF_W + WALL_T + 4.5), height: 3 });
   list.push({ type: 'gantry', along: FINISH_S, x: 0, height: 5 });
@@ -223,11 +222,11 @@ function drawObject(ctx, object, look, s) {
       const rimH = profileHeight(object.x, bankFor(sample(look.K, z)));
       const ground = Math.round(HORIZON + (CAM_H - rimH) * m);
       const high = Math.round(object.height * m);
-      const post = Math.max(1, Math.round(0.05 * m));
-      ctx.fillStyle = tint(PALETTE.paperDim);
+      const post = Math.max(2, Math.round(0.06 * m));
+      ctx.fillStyle = tint(PALETTE.paper);
       ctx.fillRect(sx - Math.floor(post / 2), ground - high, post, high);
-      const flagHigh = Math.max(2, Math.round(0.3 * m));
-      const flagLong = Math.max(3, Math.round(0.55 * m));
+      const flagHigh = Math.max(4, Math.round(0.45 * m));
+      const flagLong = Math.max(6, Math.round(0.8 * m));
       const left = sx + Math.ceil(post / 2);
       for (let row = 0; row < flagHigh; row++) {
         const taper = 1 - (Math.abs(row + 0.5 - flagHigh / 2) / (flagHigh / 2)) * 0.55;
@@ -237,49 +236,47 @@ function drawObject(ctx, object, look, s) {
       break;
     }
     case 'barrier': {
-      const near = z - 0.6;
-      const far = z + 0.6;
+      const near = z - 0.45;
+      const far = z + 0.45;
       const rimH = profileHeight(object.x, bankFor(sample(look.K, z)));
       const corner = (zz, dx, up) => {
         const mm = FOCAL / zz;
         return [Math.round(W / 2 + (sample(look.L, zz) + object.x + dx) * mm), Math.round(HORIZON + (CAM_H - rimH - up) * mm)];
       };
-      const [nl, nTop] = corner(near, -0.3, object.height);
-      const [nr, nBottom] = corner(near, 0.3, 0);
-      const [fl, fTop] = corner(far, -0.3, object.height);
-      const [fr] = corner(far, 0.3, object.height);
-      const [, fBottom] = corner(far, 0.3, 0);
+      const [nl, nTop] = corner(near, -0.2, object.height);
+      const [nr, nBottom] = corner(near, 0.2, 0);
+      const [fl, fTop] = corner(far, -0.2, object.height);
+      const [fr] = corner(far, 0.2, object.height);
+      const [, fBottom] = corner(far, 0.2, 0);
       // Inner side (towards the track centre): a parallelogram between the near and the far inner edges.
       const nIn = object.x < 0 ? nr : nl;
       const fIn = object.x < 0 ? fr : fl;
       const step = fIn >= nIn ? 1 : -1;
-      ctx.fillStyle = tint(PALETTE.wood4);
+      ctx.fillStyle = tint(PALETTE.concrete2);
       for (let x = nIn; x !== fIn; x += step) {
         const k = (x - nIn) / (fIn - nIn);
         const top = Math.round(nTop + (fTop - nTop) * k);
         const bottom = Math.round(nBottom + (fBottom - nBottom) * k);
         ctx.fillRect(Math.min(x, x + step), top, 1, bottom - top);
       }
-      ctx.fillStyle = tint(PALETTE.wood6);
+      ctx.fillStyle = tint(PALETTE.concrete3);
       for (let x = nIn; x !== fIn; x += step) {
         const k = (x - nIn) / (fIn - nIn);
         const bottom = Math.round(nBottom + (fBottom - nBottom) * k);
         ctx.fillRect(Math.min(x, x + step), bottom - 1, 1, 1);
       }
-      // Rear face (towards the camera): planks with dark seams.
-      ctx.fillStyle = tint(PALETTE.wood2);
+      ctx.fillStyle = tint(PALETTE.concrete1);
       ctx.fillRect(nl, nTop, nr - nl, nBottom - nTop);
-      ctx.fillStyle = tint(PALETTE.wood5);
-      for (let y = nTop + 3; y < nBottom - 1; y += 3) ctx.fillRect(nl, y, nr - nl, 1);
+      ctx.fillStyle = tint(PALETTE.concrete2);
       ctx.fillRect(nl, nBottom - 1, nr - nl, 1);
       // Top face from the near top edge back to the far one, with a darker front edge.
       for (let y = nTop - 1; y >= fTop; y--) {
         const k = (nTop - y) / Math.max(1, nTop - fTop);
         const l = Math.round(nl + (fl - nl) * k);
-        ctx.fillStyle = tint(PALETTE.wood1);
+        ctx.fillStyle = tint(PALETTE.concrete0);
         ctx.fillRect(l, y, Math.round(nr + (fr - nr) * k) - l, 1);
       }
-      ctx.fillStyle = tint(PALETTE.wood7);
+      ctx.fillStyle = tint(PALETTE.night);
       ctx.fillRect(nl, nTop, nr - nl, 1);
       break;
     }
@@ -360,7 +357,6 @@ function drawRows(ctx, s, look, view) {
             if (d < half) color = d > half - edgeW ? PALETTE.paper : PALETTE.red;
             else if (d < half + edgeW) color = PALETTE.paper;
           }
-          if (Math.abs(midAlong - START_LINE_S) < START_LINE_HALF) color = PALETTE.paper;
         }
         if (!rim && Math.abs(midAlong - FINISH_S) < 0.55) color = i % 2 === 0 ? PALETTE.black : PALETTE.paper;
         fillRow(ctx, a.sx, b.sx, y, mix(color, FOG_TARGET, spanFog));
@@ -388,6 +384,31 @@ function drawRows(ctx, s, look, view) {
       clip[y] = { left: left.sx, right: right.sx, z: Math.min(left.z, right.z) };
     }
     flushObjects(y);
+  }
+}
+
+// Thin start line across the ice: sampled along the trough profile and drawn as a 2 px curve, so it stays neat
+// where a per-row colour test would make a chunky stair-step.
+function drawStartLine(ctx, s, look, bank) {
+  const z = START_LINE_S - s;
+  if (z <= 2.3 || z >= MAX_Z - 2) return;
+  const steps = 64;
+  const points = [];
+  for (let i = 0; i <= steps; i++) {
+    const x = -HALF_W + (i * 2 * HALF_W) / steps;
+    const [sx, sy] = project(look, x, profileHeight(x, bank), z);
+    points.push([Math.round(sx), Math.round(sy)]);
+  }
+  ctx.fillStyle = PALETTE.paper;
+  for (let i = 0; i < steps; i++) {
+    const [x0, y0] = points[i];
+    const [x1, y1] = points[i + 1];
+    const dx = x1 - x0;
+    if (dx <= 0) continue;
+    for (let x = x0; x < x1; x++) {
+      const y = Math.round(y0 + ((y1 - y0) * (x - x0)) / dx);
+      if (y >= 0 && y < H - 1) ctx.fillRect(x, y, 1, 2);
+    }
   }
 }
 
@@ -419,6 +440,7 @@ export function renderLuge(ctx, view) {
   const full = { ...view, bank: bankFor(sample(look.K, SLED_Z + 0.7)) };
   drawBackdrop(ctx, s);
   drawRows(ctx, s, look, full);
+  drawStartLine(ctx, s, look, full.bank);
   drawSledAndRider(ctx, look, full);
   if (view.phase === 'push') drawRunner(ctx, look, full, view.stride ?? 0);
   if (view.sparks) {
