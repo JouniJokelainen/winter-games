@@ -1,7 +1,7 @@
 // Luge sky: a smooth misty gradient, a dim sun with a glow, three cloud layers and three snow-capped ridges.
 // Everything is drawn with whole-pixel fillRects; soft edges come from stacked low-alpha shapes.
 import { createRng } from '../../engine/rng.js';
-import { W } from './lugeProjection.js';
+import { HEADING_PX, W } from './lugeProjection.js';
 
 const SKY_TOP = '#9da1b3';
 const SKY_HORIZON = '#d9d7e1';
@@ -81,7 +81,7 @@ function drawGradient(ctx, horizon) {
 }
 
 function drawSun(ctx, heading) {
-  const cx = Math.round(W * 0.68 - heading * 600 * 0.03);
+  const cx = Math.round(W * 0.68 - heading * HEADING_PX * 0.03);
   const cy = 104;
   for (const [r, a] of [[78, 0.05], [58, 0.06], [42, 0.08], [28, 0.1], [18, 0.14]]) blob(ctx, cx, cy, r, Math.round(r * 0.8), rgba(SUN_COLOR, a));
   blob(ctx, cx, cy, 13, 13, rgba(SUN_COLOR, 0.7));
@@ -103,7 +103,7 @@ for (const layer of CLOUD_LAYERS) {
 function drawClouds(ctx, heading, clock) {
   for (const layer of CLOUD_LAYERS) {
     for (const { rx, ry, y, home } of layer.clouds) {
-      const raw = home - heading * 600 * layer.par - clock * layer.drift;
+      const raw = home - heading * HEADING_PX * layer.par - clock * layer.drift;
       const x = Math.round((((raw % CLOUD_PERIOD) + CLOUD_PERIOD) % CLOUD_PERIOD) - 180);
       // Flat shadowed underside, pale soft body, then a few brighter puffs on top.
       blob(ctx, x, y + Math.round(ry * 0.5), Math.round(rx * 1.08), Math.max(2, Math.round(ry * 0.8)), rgba(layer.dark, layer.alpha * 0.45));
@@ -136,7 +136,7 @@ function cachedHeight(ridge, m) {
 
 function drawRidges(ctx, heading, horizon) {
   for (const ridge of RIDGES) {
-    const shift = Math.round(heading * 600 * ridge.par);
+    const shift = Math.round(heading * HEADING_PX * ridge.par);
     const capLine = ridge.base + ridge.amp * 0.3; // heights above this carry snow
     for (let sx = 0; sx < W; sx += ridge.step) {
       const m = sx + shift;
@@ -177,5 +177,5 @@ export function drawLugeSky(ctx, { heading, clock: rawClock, horizon }, drawFore
   drawClouds(ctx, heading, clock);
   drawRidges(ctx, heading, horizon);
   drawHaze(ctx, horizon);
-  drawForest();
+  drawForest(); // on purpose after the haze: the trees stand in front of the mist
 }

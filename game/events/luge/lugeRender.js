@@ -7,7 +7,7 @@ import { PALETTE } from '../../engine/palette.js';
 import { createRng } from '../../engine/rng.js';
 import { drawSnowfall } from '../../engine/scenery.js';
 import { drawForestBackdrop, drawLugePine, forestObjects } from './lugeForest.js';
-import { lineOverlay, paintRuns, runsCover } from './lugeLines.js';
+import { lineOverlay, paintRuns, runsCover, SAMPLES } from './lugeLines.js';
 import { drawLugeSky } from './lugeSky.js';
 import { BOARD_CLEARANCE, drawVenueObject, isVenueObject, venueObjects } from './lugeVenue.js';
 import { drawRunner, drawSledAndRider, SLED_X_RANGE } from './lugeSled.js';
@@ -82,8 +82,8 @@ const PAD_H = 0.6; // metres above the rim (capped just below the camera height 
 const PAD_W = 0.7; // metres outwards from the rim
 const PAD_MIN_BANK = 0.08; // the padding fades in from here to full height at PAD_MIN_BANK + 0.3
 
-// Cross-section sample positions: the rim caps and 24 steps across the trough.
-const SAMPLE_XS = [-X_OUT, ...Array.from({ length: 25 }, (_, i) => -HALF_W + (i * 2 * HALF_W) / 24), X_OUT];
+// Cross-section sample positions: the rim caps and SAMPLES steps across the trough.
+const SAMPLE_XS = [-X_OUT, ...Array.from({ length: SAMPLES + 1 }, (_, i) => -HALF_W + (i * 2 * HALF_W) / SAMPLES), X_OUT];
 
 // Ice colour from the slope of the surface (lit from the right, so the left wall is bright and the right wall
 // dark) with a darker tone deep in the walls, plus alternating bands that give a feeling of speed.

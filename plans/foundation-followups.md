@@ -14,6 +14,7 @@ Deferred findings from the foundation reviews. Each event plan picks up the item
 - Rollout (switching Pages from the legacy `docs/` build to Actions, first deploy) is done separately with the user's go-ahead.
 
 ## Any time
+- Luge graphics later rounds: speed feel (ice spray, speed lines), crash animation (rider flies off, ice debris, screen shake), snow cover and terrain details, lighting and shadows, a nicer HUD, reflections of poles/signs on the ice.
 - Luge: consider `pause()`/`resume()` hooks on event scenes for a continuous sled sound (none is played now).
 - Flow tests: save failure and retry, nickname load failure, resume from pause.
 - Add a fixed-stepper test where clamping leaves a remainder (`createFixedStepper`).

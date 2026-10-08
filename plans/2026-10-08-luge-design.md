@@ -25,6 +25,12 @@ Replaces the luge placeholder with a real event. Product rules: `suunnitelma.txt
 
 - **Camera:** from behind the rider, pseudo-3D (prototype): U-shaped ice trough with rims, banking in turns, spectators and winter scenery. Distance is shown by scrolling the track.
 - **Sled and rider:** rider lying head-first (style C), rolls with the wall under the sled; runner pushing in the push phase, red line on the ice.
+- **Rider and runner (finished graphics):** an articulated figure whose pose model lives in `lugePose.js` (run cycle, 0.3 s hop onto the sled, lean in turns), with tapered limbs, three-tone shading and a number bib on the back panel. Joints are projected like the track, so perspective and the roll on the wall come for free.
+- **Lines:** the start line, the hop band and the finish checker are smooth soft-edged lines painted by `lugeLines.js`.
+- **Sky and forest:** `lugeSky.js` draws a misty gradient, clouds in three layers, a dim sun and three mountain ridges; `lugeForest.js` adds the layered forest in front of the haze.
+- **Venue:** `lugeVenue.js` – stands at the start and the finish, spectator groups at the outer side of turns 3/5/7/9 with a 2-frame wave, and advertising boards reading `WINTER GAMES`.
+- **Track details:** an icy rim lip, a darker inner wall, padding on the outer side of turns and an ice sheen.
+- **Render budget:** under 8 ms per frame in the browser; with a no-op context a ride frame costs about 3.5-4.8 ms and the start frame about 6.5 ms.
 - **Racing line:** In practice mode a dashed orange racing line marks the recommended line: halfway from the centre to the outer rim in every turn (ramping in and out with the turn) and in the middle on straights. It is not shown in competitions. A bot that follows it finishes in ≈ 28.9 s and stays within |lateral| 0.6 of the centre.
 - **HUD:** same bar as the other events: AIKA, speed in km/h with a bar, attempt label (`YRITYS n/3` or `HARJOITUS n`). The red marker shows the hold speed at the sled's current lateral position for the tightest turn within 120 m ahead (the speed the steering can still hold). A crashed sled slides over the outer rim during the hold.
 - **Banners:** `VÄLILYÖNTI = LÄHTÖ` (blinking), `MAALI!`, `HYLÄTTY`.
@@ -41,6 +47,11 @@ New or finished files in `game/events/luge/`:
   - `stepLuge(state, controls, dt)` where `controls = { left, right, down, pushes }`
   - State: phase (`ready` | `pushing` | `running` | `finished` | `crashed`), `s`, `v`, `lateral`, `time`, crash reason, and a per-step events list (push / hop / crash / finish) used by sound and rendering.
 - `lugeProjection.js`, `lugeSled.js`, `lugeRender.js` – from the trial branch; the renderer reads the state.
+- `lugePose.js` – pure articulated poses (run, hop, lie) by forward kinematics and two-bone arm IK.
+- `lugeLines.js` – smooth soft-edged start, hop and finish lines painted over the ice.
+- `lugeSky.js` – gradient, sun, clouds and mountain ridges.
+- `lugeForest.js` – layered forest backdrop and the near pines.
+- `lugeVenue.js` – stands, spectators and advertising boards.
 - `lugeScene.js` – implements the event scene contract: `wasPressed` to start, `pressCount('Space')` for pushes, `isDown` for arrows and Down, steps the sim, plays sounds from step events, renders, holds ≈ 1 s at the end, then calls `onComplete(attempt)`; `highResolution = true`.
 
 Other changes:
@@ -62,6 +73,9 @@ Other changes:
 - **Bot test:** an automatic driver runs the real track through `stepLuge` at 1/60 s:
   - good line (8.6 taps/s, outer line 0.35): 28.5–30.5 s (≈ 29.7); centre line 30.5–33 s (≈ 31.5); average (3 taps/s) 33–36.5 s (≈ 35.0); careless player (wide tolerance 0.12, short look-ahead 50 m) finishes 30–34 s (≈ 31.4); lazy (3 taps/s) ≈ 1.7 s slower than good; no steering or braking alone: crash; steering without braking slides over the rim at turn 7
   - line bot (follows the marked racing line): 28–30.5 s, widest |lateral| < 0.75
+- Pose tests (`lugePose.test.js`): bone lengths stay fixed through the run cycle and the hop, the hop ends in the lying pose.
+- Render frame tests (`lugeRender.test.js`): every frame type draws whole-pixel rects; the sky is deterministic, slides with the heading and drifts with the clock.
+- PNG harness: before/after PNGs of key frames are rendered for visual review into the git-ignored `.superpowers/shots`.
 - Render test: every phase renders with whole-pixel rects only and without the old retro colours.
 - Event contract and flow tests keep passing; the server accepts luge attempts.
 - Browser check in dev mode (`npm run dev`): a full run, a crash, the finish, the pause menu over luge, 60 fps.

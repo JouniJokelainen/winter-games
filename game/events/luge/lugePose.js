@@ -31,7 +31,7 @@ const SOLE = 0.05; // ankle joint to the bottom of the shoe
 
 export const GROUND_H = -0.1; // the ice, relative to the deck
 export const PUSH_GRIP = { x: 0.27, h: 0.48, z: -0.02 }; // top of the rear push handles
-export const FRONT_GRIP = { x: 0.31, h: 0.06, z: 0.45 }; // the steering handles on the sides of the deck, beside the hips
+export const SIDE_GRIP = { x: 0.31, h: 0.06, z: 0.45 }; // the steering handles on the sides of the deck: the hands grip them beside the hips
 const LEAN_ROLL = (6 * Math.PI) / 180;
 const LEAN_HEAD = 0.3;
 const HOP_LIFT = 0.35;
@@ -39,13 +39,13 @@ const HOP_LIFT = 0.35;
 const TAU = Math.PI * 2;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const lerp = (a, b, t) => a + (b - a) * t;
-const add = (a, b, k = 1) => ({ x: a.x + b.x * k, h: a.h + b.h * k, z: a.z + b.z * k });
+export const add = (a, b, k = 1) => ({ x: a.x + b.x * k, h: a.h + b.h * k, z: a.z + b.z * k });
 const sub = (a, b) => ({ x: a.x - b.x, h: a.h - b.h, z: a.z - b.z });
 const dot = (a, b) => a.x * b.x + a.h * b.h + a.z * b.z;
 const length = (a) => Math.sqrt(dot(a, a));
-const scale = (a, k) => ({ x: a.x * k, h: a.h * k, z: a.z * k });
-const unit = (a) => scale(a, 1 / Math.max(length(a), 1e-9));
-const lerpPoint = (a, b, t) => ({ x: lerp(a.x, b.x, t), h: lerp(a.h, b.h, t), z: lerp(a.z, b.z, t) });
+export const scale = (a, k) => ({ x: a.x * k, h: a.h * k, z: a.z * k });
+export const unit = (a) => scale(a, 1 / Math.max(length(a), 1e-9));
+export const lerpPoint = (a, b, t) => ({ x: lerp(a.x, b.x, t), h: lerp(a.h, b.h, t), z: lerp(a.z, b.z, t) });
 
 // Direction in the sagittal plane at angle `a` from straight down, + = forward.
 const sagittal = (a) => ({ x: 0, h: -Math.cos(a), z: Math.sin(a) });
@@ -165,7 +165,7 @@ function lieParams(curve) {
     neckPitch: 0.65,
     headTilt: LEAN_HEAD * c,
     legs: [{ ...leg }, { ...leg }],
-    hands: [{ ...FRONT_GRIP, x: -FRONT_GRIP.x }, { ...FRONT_GRIP }],
+    hands: [{ ...SIDE_GRIP, x: -SIDE_GRIP.x }, { ...SIDE_GRIP }],
     poles: [{ x: -1, h: 0.3, z: 0 }, { x: 1, h: 0.3, z: 0 }],
   };
 }

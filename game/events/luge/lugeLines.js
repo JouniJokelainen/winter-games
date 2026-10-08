@@ -6,13 +6,13 @@ import { PALETTE } from '../../engine/palette.js';
 import { BANK_H, CAM_H, FOCAL, HALF_W, HORIZON, MAX_Z, profileHeight, RIM_H, sample, W } from './lugeProjection.js';
 import { FINISH_S, RED_LINE_S } from './lugeTrack.js';
 
-export const START_LINE_S = -0.9; // white start line: just behind the runner, near the bottom of the ready frame
+const START_LINE_S = -0.9; // white start line: just behind the runner, near the bottom of the ready frame
 const START_HALF = 0.04; // metres: an 8 cm white line
 const HOP_BAND_HALF = 0.45; // metres; grows with distance so the band stays a few pixels thick far away
 const CHECKER = 0.4; // finish checker square, metres
 const MIN_ROW_PX = 2.2; // a far checker row stays at least this many pixels deep at the bottom of the trough
 const SUB = 4; // sub-samples per pixel side for partly covered pixels
-const SAMPLES = 24;
+export const SAMPLES = 24; // cross-section steps across the trough; lugeRender's SAMPLE_XS uses the same count
 const ICE_XS = Array.from({ length: SAMPLES + 1 }, (_, i) => -HALF_W + (i * 2 * HALF_W) / SAMPLES);
 const PX_PER_M = CAM_H * FOCAL; // screen px per metre along the track at the trough bottom is PX_PER_M / z²
 
@@ -57,8 +57,6 @@ function finishLine(z) {
   };
 }
 
-// One edge of a pixel row (screen y = HORIZON + dy): the projected cross-section samples with their screen x,
-// distance along the track and arc length across the trough (from the centre line, along the surface).
 // The cross-section of the trough for a bank: sample heights and arc lengths (they do not depend on the row).
 function makeSection() {
   return { bank: NaN, h: new Float64Array(SAMPLES + 1), arc: new Float64Array(SAMPLES + 1) };
@@ -76,6 +74,8 @@ function shapeSection(section, bank) {
   for (let i = 0; i <= SAMPLES; i++) arc[i] -= mid;
 }
 
+// One edge of a pixel row (screen y = HORIZON + dy): the projected cross-section samples with their screen x,
+// distance along the track and arc length across the trough (from the centre line, along the surface).
 function makeEdge(section) {
   return {
     dy: NaN,
@@ -126,11 +126,13 @@ function fillCorners(edge, first, k0, k1) {
 }
 
 // Colour strings for a pixel's coverage: the sub-sample counts per colour, cached per line tint.
+const MAX_COLOR_CACHES = 512;
 const colorCaches = new Map();
 function colorCache(tinted) {
   const key = tinted.join('');
   let cache = colorCaches.get(key);
   if (cache === undefined) {
+    if (colorCaches.size >= MAX_COLOR_CACHES) colorCaches.clear(); // keep the module-global cache bounded
     cache = new Map();
     colorCaches.set(key, cache);
   }

@@ -17,7 +17,7 @@ export function fillCapsule(ctx, ax, ay, bx, by, radius, colorAt) {
       const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lengthSq));
       const cx = ax + dx * t;
       const cy = ay + dy * t;
-      const distance = Math.hypot(px - cx, py - cy);
+      const distance = Math.sqrt((px - cx) * (px - cx) + (py - cy) * (py - cy));
       if (distance > radius) continue;
       // Signed offset across the limb, -1 (left of a→b, i.e. "up" for a limb pointing right) .. 1.
       const across = ((px - cx) * (-dy / length) + (py - cy) * (dx / length)) / radius;
@@ -50,7 +50,7 @@ export function fillTaper(ctx, ax, ay, bx, by, radiusA, radiusB, colorAt) {
       const cx = ax + dx * t;
       const cy = ay + dy * t;
       const radius = radiusA + dr * t;
-      const distance = Math.hypot(px - cx, py - cy);
+      const distance = Math.sqrt((px - cx) * (px - cx) + (py - cy) * (py - cy));
       if (distance > radius) continue;
       ctx.fillStyle = colorAt(((px - cx) * nx + (py - cy) * ny) / radius, t);
       ctx.fillRect(x, y, 1, 1);

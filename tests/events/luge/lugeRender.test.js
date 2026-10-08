@@ -516,3 +516,17 @@ test('the line frames draw whole pixels, no retro colours and keep the rims free
     }
   }
 });
+
+test('the sky is deterministic, slides with the heading and drifts with the clock', async () => {
+  const { drawLugeSky } = await import('../../../game/events/luge/lugeSky.js');
+  const { HORIZON } = await import('../../../game/events/luge/lugeProjection.js');
+  const sky = (heading, clock) => {
+    const ctx = recordingCtx();
+    drawLugeSky(ctx, { heading, clock, horizon: HORIZON }, () => {});
+    return JSON.stringify(ctx.rects);
+  };
+  assert.equal(sky(0.3, 5), sky(0.3, 5));
+  assert.notEqual(sky(0.3, 5), sky(1.3, 5));
+  assert.notEqual(sky(0.3, 5), sky(0.3, 25));
+  assert.equal(sky(0.3, undefined), sky(0.3, 0));
+});

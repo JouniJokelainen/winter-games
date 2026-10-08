@@ -3,7 +3,7 @@
 // Everything is deterministic from seeded rngs and drawn with whole-pixel fillRects.
 import { PALETTE } from '../../engine/palette.js';
 import { createRng } from '../../engine/rng.js';
-import { H, W } from './lugeProjection.js';
+import { H, HEADING_PX, W } from './lugeProjection.js';
 
 const identity = (color) => color;
 const SHADOW = 'rgba(96,102,124,0.22)';
@@ -118,7 +118,7 @@ const LAYERS = [
 
 export function drawForestBackdrop(ctx, { heading, horizon, tint }) {
   for (const layer of LAYERS) {
-    const offset = heading * 600 * layer.par;
+    const offset = heading * HEADING_PX * layer.par;
     const first = Math.floor(offset / layer.spacing) - 2;
     const count = Math.ceil(W / layer.spacing) + 5;
     for (let i = first; i < first + count; i++) {

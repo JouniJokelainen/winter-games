@@ -15,6 +15,7 @@ export const RIM_H = 1.5; // height of the rim above the bottom of the trough on
 export const BANK_H = 0.5; // how much a banked turn raises the outer rim and lowers the inner one
 export const BANK_FULL_CURVATURE = 0.035; // curvature (1/m) at which the banking is at its maximum
 export const SLED_Z = 3.4; // distance from the camera to the rear of the sled
+export const HEADING_PX = 600; // pixels the backdrop moves per radian of heading (times the layer parallax)
 
 const STEP = 0.5;
 const COUNT = 400;

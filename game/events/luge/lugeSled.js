@@ -5,7 +5,7 @@
 import { PALETTE } from '../../engine/palette.js';
 import { fillTaper } from '../../engine/skeleton.js';
 import { SKIER_STYLES } from '../skiJump/skier.js';
-import { FRONT_GRIP, GROUND_H, hopPose, liePose, PUSH_GRIP, runPose } from './lugePose.js';
+import { add as offset, GROUND_H, hopPose, lerpPoint as lerpP, liePose, PUSH_GRIP, runPose, SIDE_GRIP, unit } from './lugePose.js';
 import { profileHeight, profileSlope, project, SLED_Z } from './lugeProjection.js';
 
 const STYLE = SKIER_STYLES.classic;
@@ -140,34 +140,27 @@ function painter(ctx, look, place) {
 }
 
 const P = (x, h, z) => ({ x, h, z });
-const lerpP = (a, b, t) => P(a.x + (b.x - a.x) * t, a.h + (b.h - a.h) * t, a.z + (b.z - a.z) * t);
-const offset = (a, d, k) => P(a.x + d.x * k, a.h + d.h * k, a.z + d.z * k);
-const unit = (d) => {
-  const l = Math.hypot(d.x, d.h, d.z) || 1;
-  return P(d.x / l, d.h / l, d.z / l);
-};
 
 // ---- the sled -----------------------------------------------------------------------------------
 
 const WOOD = tones(PALETTE.wood2, PALETTE.wood5, { light: 0.0, rim: 0.25 });
 const STEEL = tones(PALETTE.steel, PALETTE.steelDark, { light: 0.3, rim: 0.6 });
 
-function drawSled(ctx, look, draw, handles) {
+function drawSled(ctx, draw, handles) {
   const { at, taper } = draw;
-  const deckH = 0; // pose h of the deck top
   for (const side of [-1, 1]) {
     taper(P(side * 0.3, -0.07, -0.05), P(side * 0.3, -0.07, SLED_LENGTH), 0.035, 0.035, STEEL);
     taper(P(side * 0.3, -0.07, SLED_LENGTH), P(side * 0.29, 0.08, SLED_LENGTH + 0.22), 0.032, 0.026, STEEL);
   }
-  const deck = [[-0.34, 0], [0.34, 0], [0.34, SLED_LENGTH], [-0.34, SLED_LENGTH]].map(([x, z]) => at(P(x, deckH, z)));
+  const deck = [[-0.34, 0], [0.34, 0], [0.34, SLED_LENGTH], [-0.34, SLED_LENGTH]].map(([x, z]) => at(P(x, 0, z)));
   fillPolygon(ctx, deck, PALETTE.wood4);
   // A lighter seat pan in the middle of the deck.
-  const pan = [[-0.24, 0.05], [0.24, 0.05], [0.22, SLED_LENGTH - 0.12], [-0.22, SLED_LENGTH - 0.12]].map(([x, z]) => at(P(x, deckH + 0.005, z)));
+  const pan = [[-0.24, 0.05], [0.24, 0.05], [0.22, SLED_LENGTH - 0.12], [-0.22, SLED_LENGTH - 0.12]].map(([x, z]) => at(P(x, 0.005, z)));
   fillPolygon(ctx, pan, PALETTE.wood3);
   for (const side of [-1, 1]) taper(P(side * 0.34, 0.01, 0), P(side * 0.34, 0.01, SLED_LENGTH), 0.04, 0.04, WOOD);
-  // Steering handles at the front corners.
+  // Steering handles on the sides of the deck, where the rider's hands grip them.
   for (const side of [-1, 1]) {
-    taper(P(side * 0.32, 0.0, FRONT_GRIP.z), P(side * FRONT_GRIP.x, FRONT_GRIP.h, FRONT_GRIP.z), 0.018, 0.018, STEEL);
+    taper(P(side * 0.32, 0.0, SIDE_GRIP.z), P(side * SIDE_GRIP.x, SIDE_GRIP.h, SIDE_GRIP.z), 0.018, 0.018, STEEL);
   }
   // Rear push handles: they fold down as the rider hops on (`handles` 1 = up, 0 = folded).
   if (handles > 0) {
@@ -330,7 +323,7 @@ export function drawSledAndRider(ctx, look, view) {
   const place = makePlacer(view);
   const draw = { ...painter(ctx, look, place), ctx };
   const hopping = view.phase !== 'push' && typeof view.hop === 'number' && view.hop < 1;
-  drawSled(ctx, look, draw, view.phase === 'push' ? 1 : hopping ? Math.max(0, 1 - 2 * view.hop) : 0);
+  drawSled(ctx, draw, view.phase === 'push' ? 1 : hopping ? Math.max(0, 1 - 2 * view.hop) : 0);
   if (view.phase === 'push') return; // the runner is still pushing: nobody lies on the sled yet
   const pose = hopping ? hopPose(view.hop, view.curve ?? 0) : liePose(view.curve ?? 0);
   drawAthlete(ctx, draw, pose, hopping ? GROUND_H * (1 - view.hop) : 0);
@@ -340,6 +333,6 @@ export function drawSledAndRider(ctx, look, view) {
 export function drawRunner(ctx, look, view, stride) {
   const place = makePlacer({ ...view, lateral: 0, bank: 0 });
   const draw = { ...painter(ctx, look, place), ctx };
-  const speed01 = clamp(view.speedKmh / 3.6 / MAX_PUSH_SPEED, 0, 1);
+  const speed01 = clamp((view.speedKmh ?? 0) / 3.6 / MAX_PUSH_SPEED, 0, 1);
   drawAthlete(ctx, draw, runPose(stride, speed01), GROUND_H);
 }
