@@ -66,6 +66,8 @@ export const PALETTE = {
   skierSki: '#a8743a',
   skierSkiShade: '#6a4420',
   // Menu panels and text in the realistic style.
+  steel: '#9aa0aa',
+  steelDark: '#6d727c',
   slate: '#2a2d36',
   slateEdge: '#6a6d75',
   paper: '#ece9e2',

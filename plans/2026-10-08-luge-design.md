@@ -9,9 +9,9 @@ Replaces the luge placeholder with a real event. Product rules: `suunnitelma.txt
 
 ## Rules
 
-- **Push phase (5 s):** Space starts the run. The player taps Space as fast as possible; each press adds speed, and speed decays without pressing. The phase lasts a fixed 5 s and ends at the red line (`RED_LINE_S`), where the rider hops on automatically. The push speed is the entry speed of the slope.
+- **Push phase (5 s):** Space starts the run. The player taps Space as fast as possible; each press adds speed, and speed decays without pressing. The phase ends when the sled reaches the red line (`RED_LINE_S`), where the rider hops on automatically: strong tapping takes about 5 s (≈4.5 s), weak tapping longer, no tapping about 15 s (the runner keeps walking at 1 m/s). The push speed is the entry speed of the slope.
 - **Slope:** the sled has track distance `s`, speed `v` and lateral position `lateral ∈ [-1, 1]` (−1 left rim, 0 centre, 1 right rim). Left/right arrows move `lateral`; Down brakes.
-- **Turns (curvature `k`, positive = right):** `side = lateral · sign(k)`. Outer side (`side > 0`) speeds the sled up, inner side (`side < 0`) slows it, centre keeps speed. The effect scales with `|k|`. On straights lateral position has no effect on speed.
+- **Turns (curvature `k`, positive = right):** `outer = −lateral · sign(k)` (a right turn, k > 0, has its outer side on the left, lateral < 0). `outer > 0` speeds the sled up, `outer < 0` slows it, centre keeps speed. The effect scales with `|k|`. On straights lateral position has no effect on speed.
 - **Crash (run rejected):** `|lateral| ≥ 1`, or `v > vSafe(k) = √(A / |k|)` in a turn. A crash ends the run with `valid: false`, 0 points, and the reason `SUISTUIT RADALTA`.
 - **Timing:** the clock starts when Space is pressed and stops at the finish line (`FINISH_S`); the push phase counts.
 - **Points:** existing `lugePoints(time)` = 60 − 5 × started seconds over 30. Three runs; the fastest valid run counts (`bestAttempt`).
@@ -19,12 +19,7 @@ Replaces the luge placeholder with a real event. Product rules: `suunnitelma.txt
 
 ## Physics (starting values, tuned by the bot test)
 
-- Gravity acceleration along the track `g_eff`, quadratic drag; free-running top speed on straights ≈ 45 m/s.
-- Push: each press adds ≈ +0.6 m/s, decay ≈ −1.2 m/s per second, cap ≈ 7 m/s.
-- Lateral: `lateral` moves at ≈ 1.6 per second toward the held arrow and eases toward the rest position when released.
-- Turn speed effect: `dv/dt += C · (|k| / kMax) · side`, with `C ≈ 3 m/s²`.
-- Brake: ≈ −15 m/s² while Down is held.
-- `A` for `vSafe` ≈ 40 (so the tightest turn, k = 0.045, allows ≈ 30 m/s).
+- Push impulse 0.3 m/s per press, decay 0.8 m/s per second, floor 1 m/s, cap 4 m/s; gravity 8.3 m/s², drag 0.0022 /m; lateral rate 1.6 per second, return 0.8 per second; turn gain 5 m/s² (at `|k| = 0.045`); brake 15 m/s²; `A = 68` (so the tightest turn, k = 0.045, allows ≈ 39 m/s ≈ 140 km/h).
 
 ## Presentation
 
