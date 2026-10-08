@@ -5,7 +5,8 @@ import { drawBlinking } from '../../engine/draw.js';
 import { drawText } from '../../engine/font.js';
 import { PALETTE } from '../../engine/palette.js';
 import { createRng } from '../../engine/rng.js';
-import { drawForestLayer, drawPine, drawSnowfall } from '../../engine/scenery.js';
+import { drawSnowfall } from '../../engine/scenery.js';
+import { drawForestBackdrop, drawLugePine, forestObjects } from './lugeForest.js';
 import { drawLugeSky } from './lugeSky.js';
 import { drawRunner, drawSledAndRider, SLED_X_RANGE } from './lugeSled.js';
 import {
@@ -25,6 +26,13 @@ const START_LINE_S = -0.9; // white start line: just behind the runner, near the
 const BARRIER_S = -0.3; // start barriers on the rims, beside the sled
 const HOP_BAND_HALF = 0.45; // metres; grows with distance so the band stays a few pixels thick far away
 const SPECTATOR_COLORS = [PALETTE.suitPink, PALETTE.guide, PALETTE.wood2, PALETTE.pineLight, PALETTE.concrete1, PALETTE.red];
+
+// Stretches where no near tree stands: the start area, the finish and the outer side of every turn (venue objects).
+const FOREST_MARGINS = [
+  { from: -50, to: 40, side: 0 },
+  { from: FINISH_S - 40, to: FINISH_S + 40, side: 0 },
+  ...TURNS.map((turn) => ({ from: turn.at - 20, to: turn.at + 20, side: turn.k > 0 ? -1 : 1 })),
+];
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -89,9 +97,8 @@ function computeIce(slope, depth, band) {
 
 function drawBackdrop(ctx, s, clock) {
   const heading = headingAt(s);
-  const camera = { x: heading * 600, y: 1200 };
   drawLugeSky(ctx, { heading, clock, horizon: HORIZON }, () => {
-    drawForestLayer(ctx, camera, { parallax: 0.2, spacing: 26, minHeight: 12, maxHeight: 22, baseY: HORIZON - 14, seed: 31 });
+    drawForestBackdrop(ctx, { heading, horizon: HORIZON, tint: (color, amount) => mix(color, FOG_TARGET, amount) });
   });
 }
 
@@ -105,10 +112,11 @@ function buildScenery(s) {
     const rng = createRng(500 + i);
     const along = i * 12;
     const edge = HALF_W + WALL_T;
-    list.push({ type: 'pine', along: along + rng() * 8, x: -(edge + 2.5 + rng() * 5), height: 7 + rng() * 4 });
-    list.push({ type: i % 3 === 0 ? 'crowd' : 'pine', along: along + rng() * 8, x: edge + 1.6 + rng() * 5, height: 7 + rng() * 4, seed: i });
+    rng(); rng();
+    if (i % 3 === 0) list.push({ type: 'crowd', along: along + rng() * 8, x: edge + 1.6 + rng() * 5, seed: i });
     if (i % 3 === 1) list.push({ type: 'pole', along, x: edge + 0.9, height: 6 });
   }
+  list.push(...forestObjects(first, last, { edge: HALF_W + WALL_T, margins: FOREST_MARGINS }));
   for (const turn of TURNS) {
     const outer = turn.k > 0 ? -1 : 1;
     list.push({ type: 'sign', along: turn.at - 30, x: outer * (HALF_W + WALL_T + 1.2), height: 1.4 });
@@ -132,7 +140,7 @@ function drawObject(ctx, object, look, s) {
   switch (object.type) {
     case 'pine': {
       const height = Math.round(object.height * m);
-      if (height >= 4) drawPine(ctx, sx, base, height);
+      if (height >= 4 && height < 190) drawLugePine(ctx, sx, base, height, { seed: object.seed, tint, fog });
       break;
     }
     case 'pole': {

@@ -134,3 +134,52 @@ test('the sky is a smooth gradient, not a few flat bands', () => {
   const colors = new Set(ctx.rects.filter((r) => r.y < 150 && r.w >= 600).map((r) => r.color));
   assert.ok(colors.size > 12, `${colors.size} distinct full-width sky colours`);
 });
+
+const isGreen = (color) => {
+  if (typeof color !== 'string' || !color.startsWith('#')) return false;
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16));
+  return g > r + 6 && g > b + 6 && g < 120;
+};
+
+test('the forest has several tones and no single huge tree', () => {
+  const ctx = recordingCtx();
+  renderLuge(ctx, { ...BASE, s: 60 });
+  const green = ctx.rects.filter((r) => isGreen(r.color) && r.y >= 44 && r.y < 330);
+  const trunks = ctx.rects.filter((r) => r.color === PALETTE.trunk || r.color === PALETTE.wood3);
+  const tones = new Set(green.map((r) => r.color));
+  assert.ok(tones.size >= 4, `${tones.size} distinct dark-green tones`);
+  // No single tree (a connected vertical run of crown and trunk pixels in one column) may reach 200 px.
+  const columns = new Map();
+  for (const r of [...green, ...trunks]) {
+    for (let x = Math.max(0, r.x); x < Math.min(640, r.x + r.w); x++) {
+      if (!columns.has(x)) columns.set(x, []);
+      columns.get(x).push([r.y, r.y + r.h]);
+    }
+  }
+  for (const [x, spans] of columns) {
+    spans.sort((p, q) => p[0] - q[0]);
+    let start = spans[0][0];
+    let end = spans[0][1];
+    for (const [y0, y1] of spans.slice(1).concat([[9999, 9999]])) {
+      if (y0 <= end + 1) end = Math.max(end, y1);
+      else {
+        assert.ok(end - start < 200, `tree run at x=${x} spans ${end - start}px`);
+        start = y0;
+        end = y1;
+      }
+    }
+  }
+});
+
+test('the forest is deterministic and stays off the track', () => {
+  const shot = (view) => {
+    const ctx = recordingCtx();
+    renderLuge(ctx, view);
+    return ctx.rects;
+  };
+  const view = { ...BASE, s: 300 };
+  assert.deepEqual(shot(view), shot(view));
+  for (const r of shot({ ...BASE, s: 60 })) {
+    if (isGreen(r.color) && r.y > 215 && r.y < 420) assert.ok(r.x > 320 || r.x + r.w < 320, `green rect on the track ${JSON.stringify(r)}`);
+  }
+});
