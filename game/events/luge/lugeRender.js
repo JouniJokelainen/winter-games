@@ -7,6 +7,7 @@ import { PALETTE } from '../../engine/palette.js';
 import { createRng } from '../../engine/rng.js';
 import { drawSnowfall } from '../../engine/scenery.js';
 import { drawForestBackdrop, drawLugePine, forestObjects } from './lugeForest.js';
+import { lineOverlay, paintRuns, runsCover } from './lugeLines.js';
 import { drawLugeSky } from './lugeSky.js';
 import { BOARD_CLEARANCE, drawVenueObject, isVenueObject, venueObjects } from './lugeVenue.js';
 import { drawRunner, drawSledAndRider, SLED_X_RANGE } from './lugeSled.js';
@@ -23,9 +24,7 @@ const LINE_DASH = 1.5; // metres per dash and per gap
 const LINE_WIDTH = 0.1; // metres
 const FOG_SPAN = 150;
 const RIM_X = HALF_W + WALL_T / 2; // centre of the rim cap
-const START_LINE_S = -0.9; // white start line: just behind the runner, near the bottom of the ready frame
 const BARRIER_S = -0.3; // start barriers on the rims, beside the sled
-const HOP_BAND_HALF = 0.45; // metres; grows with distance so the band stays a few pixels thick far away
 
 // Stretches where no near tree stands: the start area, the finish and the outer side of every turn (venue objects).
 const FOREST_MARGINS = [
@@ -144,11 +143,17 @@ function drawPadding(ctx, look, bank, dy, s, y, rimSx) {
   }
 }
 
+// Inner edge column of a lip (rounded): at least LIP_MIN_W px in from the outer edge.
+function lipInner(outerSx, innerSx, side) {
+  const outer = Math.round(outerSx);
+  return side < 0 ? Math.max(Math.round(innerSx), outer + LIP_MIN_W) : Math.min(Math.round(innerSx), outer - LIP_MIN_W);
+}
+
 // One side of the rim cap on a screen row: concrete outline outside, cool blue-white lip, a bright highlight on the
 // inner edge and a thin dark line just inside on the wall. The lip is at least LIP_MIN_W px wide.
 function drawLip(ctx, y, outerSx, innerSx, side, tint) {
   const outer = Math.round(outerSx);
-  const inner = side < 0 ? Math.max(Math.round(innerSx), outer + LIP_MIN_W) : Math.min(Math.round(innerSx), outer - LIP_MIN_W);
+  const inner = lipInner(outerSx, innerSx, side);
   const lo = Math.min(outer, inner);
   const hi = Math.max(outer, inner);
   const wide = hi - lo >= 5;
@@ -377,6 +382,10 @@ function maskedCtx(ctx, z, clip) {
 
 function drawRows(ctx, s, look, view) {
   const objects = buildScenery(s);
+  const lines = lineOverlay(s, look, {
+    showRedLine: view.showRedLine,
+    tint: (color, z) => mix(color, FOG_TARGET, clamp((z - FOG_START) / FOG_SPAN, 0, 1)),
+  });
   const clip = [];
   let next = 0;
   const flushObjects = (y) => {
@@ -404,7 +413,6 @@ function drawRows(ctx, s, look, view) {
         const zi = ((CAM_H - h) * FOCAL) / dy;
         return { x, z: zi, sx: W / 2 + (sample(look.L, zi) + x) * (FOCAL / zi) };
       });
-      let marked = false; // a marking (hop band, finish checker) crosses this row: no sheen over it
       for (let i = 0; i < points.length - 1; i++) {
         const a = points[i];
         const b = points[i + 1];
@@ -414,26 +422,10 @@ function drawRows(ctx, s, look, view) {
         const midAlong = s + midZ;
         const spanFog = clamp((midZ - FOG_START) / FOG_SPAN, 0, 1);
         const rim = Math.abs(midX) > HALF_W;
-        let plain = !rim;
-        let color = rim
+        const color = rim
           ? RIM_COLOR
           : iceColor(profileSlope(midX, bank), Math.abs(midX) / HALF_W, Math.floor(midAlong / 5) % 2 === 0);
-        if (!rim) {
-          if (view.showRedLine) {
-            const half = Math.max(HOP_BAND_HALF, 0.08 * midZ);
-            const edgeW = Math.max(0.08, 0.016 * midZ);
-            const d = Math.abs(midAlong - RED_LINE_S);
-            if (d < half) color = d > half - edgeW ? PALETTE.paper : PALETTE.red;
-            else if (d < half + edgeW) color = PALETTE.paper;
-            plain = d >= half + edgeW;
-          }
-        }
-        if (!rim && Math.abs(midAlong - FINISH_S) < 0.55) {
-          color = i % 2 === 0 ? PALETTE.black : PALETTE.paper;
-          plain = false;
-        }
-        if (!rim && !plain) marked = true;
-        fillRow(ctx, a.sx, b.sx, y, mix(color, plain ? ICE_FOG : FOG_TARGET, spanFog));
+        fillRow(ctx, a.sx, b.sx, y, mix(color, rim ? FOG_TARGET : ICE_FOG, spanFog));
       }
       // Rim outline and the two runner grooves in the bottom of the trough.
       const left = points[0];
@@ -441,13 +433,15 @@ function drawRows(ctx, s, look, view) {
       drawPadding(ctx, look, bank, dy, s, y, bank > 0 ? left.sx : right.sx);
       drawLip(ctx, y, left.sx, points[1].sx, -1, tint);
       drawLip(ctx, y, right.sx, points.at(-2).sx, 1, tint);
+      // Start line, hop band and finish checker on this row: strictly inside the lip shadows, painted last.
+      const marks = lines === null ? null : lines.row(y, lipInner(left.sx, points[1].sx, -1) + 1, lipInner(right.sx, points.at(-2).sx, 1) - 2, bank);
       for (const groove of [-0.9, 0.9]) {
         const zg = ((CAM_H - profileHeight(groove, bank)) * FOCAL) / dy;
         const sx = W / 2 + (sample(look.L, zg) + groove) * (FOCAL / zg);
         const wide = Math.max(2, (0.3 * FOCAL) / zg);
         const core = Math.max(1, (0.1 * FOCAL) / zg);
         const [faint, strong] = sheenTones(iceColor(profileSlope(groove, bank), Math.abs(groove) / HALF_W, Math.floor((s + z) / 5) % 2 === 0));
-        if (!marked) {
+        if (!runsCover(marks, Math.round(sx))) {
           fillRow(ctx, sx - wide, sx + wide, y, tint(faint));
           fillRow(ctx, sx - core, sx + core, y, tint(strong));
         }
@@ -463,34 +457,10 @@ function drawRows(ctx, s, look, view) {
           fillRow(ctx, sx - width / 2, sx + width / 2, y, tint(PALETTE.orange));
         }
       }
+      paintRuns(ctx, y, marks);
       clip[y] = { left: left.sx, right: right.sx, z: Math.min(left.z, right.z) };
     }
     flushObjects(y);
-  }
-}
-
-// Thin start line across the ice: sampled along the trough profile and drawn as a 2 px curve, so it stays neat
-// where a per-row colour test would make a chunky stair-step.
-function drawStartLine(ctx, s, look, bank) {
-  const z = START_LINE_S - s;
-  if (z <= 2.3 || z >= MAX_Z - 2) return;
-  const steps = 64;
-  const points = [];
-  for (let i = 0; i <= steps; i++) {
-    const x = -HALF_W + (i * 2 * HALF_W) / steps;
-    const [sx, sy] = project(look, x, profileHeight(x, bank), z);
-    points.push([Math.round(sx), Math.round(sy)]);
-  }
-  ctx.fillStyle = PALETTE.paper;
-  for (let i = 0; i < steps; i++) {
-    const [x0, y0] = points[i];
-    const [x1, y1] = points[i + 1];
-    const dx = x1 - x0;
-    if (dx <= 0) continue;
-    for (let x = x0; x < x1; x++) {
-      const y = Math.round(y0 + ((y1 - y0) * (x - x0)) / dx);
-      if (y >= 0 && y < H - 1) ctx.fillRect(x, y, 1, 2);
-    }
   }
 }
 
@@ -523,7 +493,6 @@ export function renderLuge(ctx, view) {
   const full = { ...view, clock, bank: bankFor(sample(look.K, SLED_Z + 0.7)) };
   drawBackdrop(ctx, s, clock);
   drawRows(ctx, s, look, full);
-  drawStartLine(ctx, s, look, full.bank);
   drawSledAndRider(ctx, look, full);
   if (view.phase === 'push') drawRunner(ctx, look, full, view.stride ?? 0);
   if (view.sparks) {

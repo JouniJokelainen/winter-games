@@ -82,10 +82,16 @@ const redCount = (view) => {
   return ctx.rects.filter((r) => r.color === PALETTE.red).length;
 };
 
+const redArea = (view) => {
+  const ctx = recordingCtx();
+  renderLuge(ctx, view);
+  return ctx.rects.filter((r) => r.color === PALETTE.red).reduce((sum, r) => sum + r.w * r.h, 0);
+};
+
 test('the hop line is a wide red band that is drawn only while showRedLine is on', () => {
-  const on = redCount(VIEWS.push);
-  const off = redCount({ ...VIEWS.push, showRedLine: false });
-  assert.ok(on > off + 60, `${on} vs ${off}`);
+  const on = redArea(VIEWS.push);
+  const off = redArea({ ...VIEWS.push, showRedLine: false });
+  assert.ok(on > off + 150, `${on} vs ${off} red pixels`); // 23 m ahead: a band about 4 px deep across the ice
 });
 
 test('the start line is drawn across the ice behind the runner in the ready frame', () => {
@@ -340,16 +346,173 @@ test('the groove sheen leaves the finish checker and the hop band intact', () =>
     return rows;
   };
   const cases = [
-    { rects: render({ ...BASE, s: 1056, phase: 'finished' }), mark: (r) => r.color === PALETTE.black && r.w >= 3, min: 5, band: [300, 512] },
-    { rects: render({ ...BASE, s: -3.4, phase: 'push', showRedLine: true }), mark: (r) => r.color === PALETTE.red, min: 5, band: [205, 240] }, // flags add one red rect per row: the band adds many
+    { rects: render({ ...BASE, s: 1056, phase: 'finished' }), mark: (r) => r.color === PALETTE.black || r.color === PALETTE.paper, band: [250, 512] },
+    { rects: render({ ...BASE, s: -3.4, phase: 'push', showRedLine: true }), mark: (r) => r.color === PALETTE.red, band: [205, 240] },
   ];
-  for (const { rects, mark, min, band } of cases) {
-    const perRow = new Map();
-    for (const r of rects) if (r.y >= band[0] && r.y < band[1] && mark(r)) perRow.set(r.y, (perRow.get(r.y) ?? 0) + 1);
-    const marked = new Set([...perRow].filter(([, n]) => n >= min).map(([y]) => y));
+  for (const { rects, mark, band } of cases) {
+    // Marked rows: an opaque marking covers a groove pixel of the row.
+    const grooves = rects.filter((r) => r.color === PALETTE.trackGroove && r.w === 1 && r.y >= band[0] && r.y < band[1]);
+    const marks = rects.filter((r) => r.h === 1 && r.y >= band[0] && r.y < band[1] && mark(r));
+    const marked = new Set(grooves.filter((g) => marks.some((r) => r.y === g.y && r.x <= g.x && r.x + r.w > g.x)).map((g) => g.y));
     const sheen = sheenRows(rects);
     assert.ok(marked.size >= 2, `${marked.size} marked rows`);
     assert.ok(sheen.size > 10, 'the sheen still shows on plain ice rows');
     for (const y of marked) assert.ok(!sheen.has(y), `row ${y} has both a marking and a sheen`);
+  }
+});
+
+// ---- smooth start, hop and finish lines ----------------------------------------------------------
+
+const LIP_SHADOW = '#4a546c'; // the 1 px dark line just inside each lip, on the wall side
+// Per screen row: the x of the lip shadow pixels; the ice (where lines may be drawn) lies strictly between them.
+const lipsByRow = (rects) => {
+  const lips = new Map();
+  for (const r of rects) {
+    if (r.color !== LIP_SHADOW || r.w !== 1 || r.h !== 1) continue;
+    const row = lips.get(r.y) ?? {};
+    if (r.x < 320) row.left = r.x;
+    else row.right = r.x;
+    lips.set(r.y, row);
+  }
+  return lips;
+};
+const rgbaOf = (color) => {
+  if (typeof color !== 'string') return null;
+  if (color.startsWith('#')) return [...rgb(color), 1];
+  const m = color.match(/^rgba\((\d+), *(\d+), *(\d+), *([\d.]+)\)$/);
+  return m ? m.slice(1).map(Number) : null;
+};
+// Black, paper and their blends (neutral greys, opaque or translucent): the finish checker colours.
+const isCheckerColor = (color) => {
+  const c = rgbaOf(color);
+  return c !== null && Math.abs(c[0] - c[1]) <= 8 && Math.abs(c[1] - c[2]) <= 8 && Math.abs(c[0] - c[2]) <= 12;
+};
+// Rects strictly between the lips of their row (single-row rects only).
+const onIce = (rects, lips) => rects.filter((r) => {
+  const lip = lips.get(r.y);
+  return r.h === 1 && lip && lip.left !== undefined && lip.right !== undefined && r.x > lip.left && r.x + r.w <= lip.right;
+});
+
+test('the finish checker is one connected strip from lip to lip', () => {
+  const rects = render({ ...BASE, s: 1046 });
+  const lips = lipsByRow(rects);
+  const marks = onIce(rects, lips).filter((r) => r.y > 200 && r.y < 300 && isCheckerColor(r.color));
+  const pixels = new Set();
+  for (const r of marks) for (let x = r.x; x < r.x + r.w; x++) pixels.add(`${x},${r.y}`);
+  assert.ok(pixels.size > 200, `${pixels.size} checker pixels`);
+  // 8-connected components of the checker pixels.
+  const seen = new Set();
+  let largest = [];
+  for (const start of pixels) {
+    if (seen.has(start)) continue;
+    const component = [];
+    const stack = [start];
+    seen.add(start);
+    while (stack.length) {
+      const key = stack.pop();
+      component.push(key);
+      const [x, y] = key.split(',').map(Number);
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const next = `${x + dx},${y + dy}`;
+          if (pixels.has(next) && !seen.has(next)) {
+            seen.add(next);
+            stack.push(next);
+          }
+        }
+      }
+    }
+    if (component.length > largest.length) largest = component;
+  }
+  assert.ok(largest.length >= pixels.size * 0.97, `largest piece ${largest.length} of ${pixels.size} pixels`);
+  const points = largest.map((key) => key.split(',').map(Number));
+  assert.ok(points.some(([x, y]) => x <= lips.get(y).left + 4), 'the strip reaches the left lip');
+  assert.ok(points.some(([x, y]) => x >= lips.get(y).right - 4), 'the strip reaches the right lip');
+});
+
+test('the lines have soft translucent edge pixels', () => {
+  const cases = [
+    { name: 'hop', view: { ...BASE, s: 14, phase: 'push', showRedLine: true }, line: (r) => r.color === PALETTE.red },
+    { name: 'start', view: { ...BASE, s: -3.4, phase: 'push', showRedLine: false }, line: (r) => r.color === PALETTE.paper && r.y > 300 && (r.x + r.w < 250 || r.x > 390) },
+    { name: 'finish', view: { ...BASE, s: 1046 }, line: (r) => r.color === PALETTE.black },
+  ];
+  for (const { name, view, line } of cases) {
+    const rects = render(view);
+    const ice = onIce(rects, lipsByRow(rects));
+    const rows = new Set(ice.filter(line).map((r) => r.y));
+    const soft = new Set(ice.filter((r) => rows.has(r.y) && String(r.color).startsWith('rgba(')).map((r) => r.y));
+    assert.ok(rows.size >= 3, `${name}: ${rows.size} line rows`);
+    assert.ok(soft.size >= rows.size * 0.8, `${name}: ${soft.size} of ${rows.size} line rows have translucent edge pixels`);
+  }
+});
+
+test('the hop band edge is a smooth curve, not segment stair steps', () => {
+  const rects = render({ ...BASE, s: 14, phase: 'push', showRedLine: true });
+  const lips = lipsByRow(rects);
+  // Leftmost opaque band pixel per row on the left half of the ice.
+  const left = new Map();
+  for (const r of onIce(rects, lips)) {
+    if ((r.color !== PALETTE.red && r.color !== PALETTE.paper) || r.x >= 300) continue;
+    left.set(r.y, Math.min(left.get(r.y) ?? Infinity, r.x));
+  }
+  const rows = [...left.keys()].sort((a, b) => a - b);
+  assert.ok(rows.length > 15, `${rows.length} band rows`);
+  // Along the wall part of the band (the edge leaves the lip and has not yet flattened out at the bottom),
+  // the per-row step of the edge changes gradually.
+  const steps = [];
+  for (let i = 1; i < rows.length; i++) if (rows[i] === rows[i - 1] + 1) steps.push(left.get(rows[i]) - left.get(rows[i - 1]));
+  const wall = steps.filter((d) => Math.abs(d) <= 12);
+  assert.ok(wall.length > 10, `${wall.length} wall steps`);
+  for (let i = 1; i < steps.length; i++) {
+    if (Math.abs(steps[i]) > 12 || Math.abs(steps[i - 1]) > 12) continue;
+    assert.ok(Math.abs(steps[i] - steps[i - 1]) <= 3, `edge steps ${steps.join(',')}`);
+  }
+});
+
+test('the groove, its sheen and the racing line do not paint over the lines', () => {
+  const cases = [
+    { view: { ...BASE, s: 1056, phase: 'finished', showLine: true }, mark: (c) => c === PALETTE.black || c === PALETTE.paper, line: isCheckerColor },
+    { view: { ...BASE, s: 14, phase: 'push', showRedLine: true, showLine: true }, mark: (c) => c === PALETTE.red || c === PALETTE.paper, line: (c) => c === PALETTE.red || c === PALETTE.paper || String(c).startsWith('rgba(') },
+  ];
+  for (const { view, mark, line } of cases) {
+    const rects = render(view);
+    const ice = onIce(rects, lipsByRow(rects));
+    let checked = 0;
+    rects.forEach((g, i) => {
+      if (g.color !== PALETTE.trackGroove || g.w !== 1 || g.h !== 1) return;
+      const covers = (r) => r.x <= g.x && r.x + r.w > g.x && r.y === g.y;
+      // A groove pixel on a line: an opaque line colour covers it somewhere in the frame.
+      if (!ice.some((r) => covers(r) && mark(r.color))) return;
+      checked += 1;
+      // The track row ends where the next row starts with its full-width snow fill.
+      const end = rects.findIndex((r, j) => j > i && r.w === 640);
+      const last = [g, ...rects.slice(i + 1, end).filter(covers)].at(-1);
+      assert.ok(line(last.color), `groove pixel ${g.x},${g.y} ends as ${last.color}`);
+    });
+    assert.ok(checked >= 4, `${checked} groove pixels on a line`);
+  }
+});
+
+test('the line frames draw whole pixels, no retro colours and keep the rims free of the lines', () => {
+  const frames = [
+    { ...BASE, s: -3.4, phase: 'push', showRedLine: true, stride: 0.25 }, { ...BASE, s: 4, phase: 'push', showRedLine: true },
+    { ...BASE, s: 2, phase: 'push', showRedLine: true }, { ...BASE, s: 10, phase: 'push', showRedLine: true },
+    { ...BASE, s: 14, phase: 'push', showRedLine: true },
+    ...[1000, 1030, 1045, 1046, 1054, 1058].map((s) => ({ ...BASE, s })), { ...BASE, s: 1056, phase: 'finished', banner: 'MAALI!' },
+  ];
+  for (const view of frames) {
+    const rects = render(view);
+    for (const r of rects) assert.ok([r.x, r.y, r.w, r.h].every(Number.isInteger), `${view.s} ${JSON.stringify(r)}`);
+    const used = new Set(rects.map((r) => r.color));
+    for (const color of RETRO_COLORS) assert.ok(!used.has(color), `${view.s} uses ${color}`);
+    // No checker or hop colour on the lip of a row (from the lip shadow outwards across the lip, 3 px at least).
+    const lips = lipsByRow(rects);
+    const lineColor = (c) => c === PALETTE.black || c === PALETTE.paper || c === PALETTE.red || (String(c).startsWith('rgba(') && isCheckerColor(c));
+    for (const r of rects) {
+      const lip = lips.get(r.y);
+      if (!lip || r.h !== 1 || !lineColor(r.color) || r.y < 200) continue;
+      if (lip.left !== undefined) assert.ok(r.x + r.w <= lip.left - 3 || r.x > lip.left, `${view.s}: ${JSON.stringify(r)} on the left lip at ${lip.left}`);
+      if (lip.right !== undefined) assert.ok(r.x >= lip.right + 4 || r.x + r.w <= lip.right, `${view.s}: ${JSON.stringify(r)} on the right lip at ${lip.right}`);
+    }
   }
 });
