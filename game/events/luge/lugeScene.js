@@ -19,6 +19,7 @@ const STRIDE_LENGTH = 1.4; // metres of pushing per leg cycle
 const CRASH_LABEL = {
   wall: 'OSUIT LAITAAN',
   speed: 'LIIAN KOVA VAUHTI',
+  time: 'AIKA YLITTYI',
 };
 
 const EVENT_SOUNDS = {

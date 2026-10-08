@@ -6,28 +6,41 @@ export const LUGE_CONFIG = {
   pushDecay: 0.8, // speed lost per second while pushing
   pushMin: 1, // the runner never stops walking
   pushMax: 4,
-  gravity: 8.3,
+  gravity: 9.3,
   drag: 0.0022,
   brake: 15,
-  lateralRate: 1.6, // lateral units per second while an arrow is held
-  lateralReturn: 0.8, // lateral units per second back to the centre
-  turnGain: 5, // speed change (m/s²) at kMax with the sled fully on the outer (+) or inner (-) side
+  lateralRate: 2.6, // lateral units per second while an arrow is held
+  straightReturn: 0.4, // lateral units per second back to the centre on a straight with no arrow held
+  driftGain: 0.025, // outward slide in a turn: lateral units per second = driftGain · v² · |k|
+  turnGain: 8, // speed change (m/s²) at kMax with the sled fully on the outer (+) or inner (-) side
   kMax: 0.045,
-  safeA: 68, // vSafe(k) = sqrt(safeA / |k|)
-  kSafeMin: 0.004, // gentler curves have no speed limit
+  safeA: 48, // vSafe(k) = sqrt(safeA / |k|) on the centre line
+  outerSafe: 0.4, // the safe speed grows by this share on the outer side and shrinks on the inner side
+  kSafeMin: 0.004, // gentler curves have no speed limit and no drift
   lookStep: 5,
+  timeLimit: 45, // a run still going after this many seconds is rejected
 };
 
-export function vSafe(k) {
-  return Math.sqrt(LUGE_CONFIG.safeA / Math.abs(k));
+// +1 = fully on the outer side of the turn, -1 = fully on the inner side. A right turn (k > 0) has its outer side on the left.
+function outerSide(k, lateral) {
+  return -lateral * Math.sign(k);
 }
 
-// Lowest safe speed over the next `distance` metres of track; Infinity when no turn is in range.
-export function speedLimitAhead(s, distance) {
+export function vSafeOuter(k, outer) {
+  return Math.sqrt(LUGE_CONFIG.safeA / Math.abs(k)) * (1 + LUGE_CONFIG.outerSafe * outer);
+}
+
+export function vSafe(k, lateral = 0) {
+  return vSafeOuter(k, outerSide(k, lateral));
+}
+
+// Lowest safe speed over the next `distance` metres of track, assuming the sled is at `outer` (-1..1) in every
+// turn; Infinity when no turn is in range.
+export function speedLimitAhead(s, distance, outer = 0) {
   let limit = Infinity;
   for (let d = 0; d <= distance; d += LUGE_CONFIG.lookStep) {
     const k = curvatureAt(s + d);
-    if (Math.abs(k) > LUGE_CONFIG.kSafeMin) limit = Math.min(limit, vSafe(k));
+    if (Math.abs(k) > LUGE_CONFIG.kSafeMin) limit = Math.min(limit, vSafeOuter(k, outer));
   }
   return limit;
 }
@@ -53,15 +66,23 @@ function crash(state, reason) {
   state.events.push({ type: 'crash' });
 }
 
+function steer(state, controls, k, dt) {
+  const c = LUGE_CONFIG;
+  const direction = (controls.right ? 1 : 0) - (controls.left ? 1 : 0);
+  state.lateral += direction * c.lateralRate * dt;
+  if (Math.abs(k) > c.kSafeMin) {
+    state.lateral -= c.driftGain * state.v * state.v * k * dt;
+  } else if (!direction) {
+    state.lateral -= Math.sign(state.lateral) * Math.min(Math.abs(state.lateral), c.straightReturn * dt);
+  }
+}
+
 function stepRun(state, controls, dt) {
   const c = LUGE_CONFIG;
   state.time += dt;
-  const direction = (controls.right ? 1 : 0) - (controls.left ? 1 : 0);
-  if (direction) state.lateral += direction * c.lateralRate * dt;
-  else state.lateral -= Math.sign(state.lateral) * Math.min(Math.abs(state.lateral), c.lateralReturn * dt);
-
   const k = curvatureAt(state.s);
-  const outer = -state.lateral * Math.sign(k); // +: outer side of the turn, -: inner side
+  steer(state, controls, k, dt);
+  const outer = outerSide(k, state.lateral);
   const acceleration = c.gravity - c.drag * state.v * state.v - (controls.down ? c.brake : 0)
     + c.turnGain * (Math.abs(k) / c.kMax) * outer;
   state.v = Math.max(0, state.v + acceleration * dt);
@@ -70,13 +91,15 @@ function stepRun(state, controls, dt) {
   if (Math.abs(state.lateral) >= 1) {
     state.lateral = Math.sign(state.lateral);
     crash(state, 'wall');
-  } else if (Math.abs(k) > c.kSafeMin && state.v > vSafe(k)) {
+  } else if (Math.abs(k) > c.kSafeMin && state.v > vSafe(k, state.lateral)) {
     crash(state, 'speed');
   } else if (state.s >= FINISH_S) {
     state.time -= (state.s - FINISH_S) / state.v;
     state.s = FINISH_S;
     state.phase = 'finished';
     state.events.push({ type: 'finish' });
+  } else if (state.time >= c.timeLimit) {
+    crash(state, 'time');
   }
 }
 

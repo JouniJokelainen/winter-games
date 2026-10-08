@@ -63,6 +63,8 @@ test('buildAttempt scores finished runs and labels the crash reasons', () => {
   assert.deepEqual(buildAttempt(finished), { valid: true, points: 45, time: 32.4, summary: ['AIKA 32,40 S', 'PISTEET 45'] });
   const wall = { ...createLugeState(), phase: 'crashed', reason: 'wall', time: 12 };
   assert.deepEqual(buildAttempt(wall), { valid: false, points: 0, time: 12, summary: ['AIKA 12,00 S', 'HYLÄTTY', 'OSUIT LAITAAN'] });
+  const slow = { ...createLugeState(), phase: 'crashed', reason: 'time', time: 45 };
+  assert.deepEqual(buildAttempt(slow), { valid: false, points: 0, time: 45, summary: ['AIKA 45,00 S', 'HYLÄTTY', 'AIKA YLITTYI'] });
 });
 
 function rectCountAtClock(scene, clock) {

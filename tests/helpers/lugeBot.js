@@ -3,10 +3,12 @@ import { curvatureAt } from '../../game/events/luge/lugeTrack.js';
 import { fakeInput } from './fakeInput.js';
 
 // pushEvery: ticks between taps; look: metres of track watched for the speed limit; margin: share of the limit the
-// bot is willing to carry into a turn; outer: how far toward the outer side it steers in a turn (0 = centre).
+// bot is willing to carry into a turn; outer: how far toward the outer side it steers in a turn (0 = centre); it also assumes that
+// position when it computes the speed limit.
 export const BOTS = {
-  good: { pushEvery: 7, look: 120, margin: 0.97, outer: 0.5 },
-  average: { pushEvery: 14, look: 60, margin: 0.8, outer: 0 },
+  good: { pushEvery: 7, look: 120, margin: 0.97, outer: 0.35 },
+  centre: { pushEvery: 7, look: 120, margin: 0.97, outer: 0 },
+  average: { pushEvery: 14, look: 60, margin: 0.8, outer: 0.2 },
 };
 
 const STEER_DEADBAND = 0.04;
@@ -21,7 +23,7 @@ export function botControls(state, profile, tick) {
   return {
     left: state.lateral > target + STEER_DEADBAND,
     right: state.lateral < target - STEER_DEADBAND,
-    down: state.v > speedLimitAhead(state.s, profile.look) * profile.margin,
+    down: state.v > speedLimitAhead(state.s, profile.look, profile.outer) * profile.margin,
     pushes: 0,
   };
 }

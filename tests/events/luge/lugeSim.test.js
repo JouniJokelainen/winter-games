@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { FINISH_S, RED_LINE_S, TURNS } from '../../../game/events/luge/lugeTrack.js';
-import { createLugeState, LUGE_CONFIG, speedLimitAhead, stepLuge, vSafe } from '../../../game/events/luge/lugeSim.js';
+import { createLugeState, LUGE_CONFIG, speedLimitAhead, stepLuge, vSafe, vSafeOuter } from '../../../game/events/luge/lugeSim.js';
 
 const DT = 1 / 60;
 const NONE = { left: false, right: false, down: false, pushes: 0 };
@@ -86,7 +86,10 @@ test('the arrows move the sled sideways and it eases back to the centre', () => 
   const held = state.lateral;
   for (let i = 0; i < 20; i++) stepLuge(state, NONE, DT);
   assert.ok(state.lateral < held && state.lateral >= 0);
-  for (let i = 0; i < 240; i++) stepLuge(state, NONE, DT);
+  for (let i = 0; i < 240; i++) {
+    state.s = 40; // stay on the straight: the return only exists there
+    stepLuge(state, NONE, DT);
+  }
   assert.equal(state.lateral, 0);
 });
 
@@ -110,7 +113,7 @@ test('touching the rim is a crash', () => {
 test('too much speed in a turn is a crash, a safe speed is not', () => {
   const k = TURNS[6].k;
   const limit = vSafe(k);
-  assert.ok(limit > 36 && limit < 42, `vSafe(${k}) = ${limit}`);
+  assert.ok(limit > 30 && limit < 35, `vSafe(${k}) = ${limit}`);
   const fast = running({ s: TIGHTEST_TURN, v: limit + 5 });
   stepLuge(fast, NONE, DT);
   assert.equal(fast.phase, 'crashed');
@@ -143,4 +146,48 @@ test('a finished or crashed run no longer changes', () => {
     assert.equal(state.time, 20);
     assert.deepEqual(state.events, []);
   }
+});
+
+test('in a turn the sled drifts toward the outer wall, harder at higher speed', () => {
+  const driftAt = (v) => {
+    const state = running({ v, lateral: 0 });
+    stepLuge(state, NONE, DT);
+    return state.lateral;
+  };
+  assert.ok(driftAt(30) < 0, 'a right turn pushes the sled to the left');
+  assert.ok(driftAt(45) < driftAt(30), 'more speed drifts harder');
+  const left = running({ s: 412, v: 30, lateral: 0 }); // turn 4 is a left turn
+  stepLuge(left, NONE, DT);
+  assert.ok(left.lateral > 0, 'a left turn pushes the sled to the right');
+});
+
+test('steering against the drift holds the line', () => {
+  const state = running({ v: 30, lateral: -0.3 });
+  for (let i = 0; i < 30; i++) stepLuge(state, { ...NONE, right: true }, DT);
+  assert.ok(state.lateral > -0.3, `lateral ${state.lateral}`);
+});
+
+test('there is no drift and no pull to the centre in a turn, but a pull on a straight', () => {
+  const turn = running({ v: 0.001, lateral: -0.5 });
+  stepLuge(turn, NONE, DT);
+  assert.ok(Math.abs(turn.lateral - -0.5) < 1e-3, `lateral ${turn.lateral}`);
+  const straight = running({ s: 40, lateral: -0.5 });
+  stepLuge(straight, NONE, DT);
+  assert.ok(straight.lateral > -0.5);
+});
+
+test('the safe speed is higher on the outer side and lower on the inner side', () => {
+  const k = TURNS[0].k; // a right turn: lateral < 0 is the outer side
+  assert.ok(vSafe(k, -0.8) > vSafe(k, 0));
+  assert.ok(vSafe(k, 0) > vSafe(k, 0.8));
+  assert.equal(vSafe(k), vSafe(k, 0));
+  assert.equal(vSafe(k, -1), vSafeOuter(k, 1));
+});
+
+test('a run still going after the time limit is rejected as too slow', () => {
+  const state = running({ s: 40, v: 5, time: LUGE_CONFIG.timeLimit - DT / 2 });
+  stepLuge(state, NONE, DT);
+  assert.equal(state.phase, 'crashed');
+  assert.equal(state.reason, 'time');
+  assert.deepEqual(state.events, [{ type: 'crash' }]);
 });
