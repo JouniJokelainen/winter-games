@@ -6,12 +6,12 @@ export const LUGE_CONFIG = {
   pushDecay: 0.8, // speed lost per second while pushing
   pushMin: 1, // the runner never stops walking
   pushMax: 4,
-  gravity: 8.3,
+  gravity: 11,
   drag: 0.0022,
   brake: 22,
-  lateralRate: 2.6, // lateral units per second while an arrow is held
+  lateralRate: 3.2, // lateral units per second while an arrow is held
   straightReturn: 0.4, // lateral units per second back to the centre on a straight with no arrow held
-  driftGain: 0.0464, // outward slide in a turn: lateral units per second = driftGain · v² · |k| · (1 - bankSupport · outer)
+  driftGain: 0.07, // outward slide in a turn: lateral units per second = driftGain · v² · |k| · (1 - bankSupport · outer)
   bankSupport: 0.5, // the banked outer wall carries the sled (less slide), the inner side does not (more slide)
   turnGain: 8, // speed change (m/s²) at kMax with the sled fully on the outer (+) or inner (-) side
   kMax: 0.045,

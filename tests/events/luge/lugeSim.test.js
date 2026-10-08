@@ -81,7 +81,7 @@ test('lateral position has no effect on speed on a straight', () => {
 
 test('the arrows move the sled sideways and it eases back to the centre', () => {
   const state = running({ s: 40 });
-  for (let i = 0; i < 20; i++) stepLuge(state, { ...NONE, right: true }, DT);
+  for (let i = 0; i < 10; i++) stepLuge(state, { ...NONE, right: true }, DT);
   assert.ok(state.lateral > 0.4);
   const held = state.lateral;
   for (let i = 0; i < 20; i++) stepLuge(state, NONE, DT);
@@ -110,9 +110,9 @@ test('touching the rim is a crash', () => {
   assert.deepEqual(state.events, [{ type: 'crash' }]);
 });
 
-test('the hold speed of the tightest turn is about 127 km/h on the centre line', () => {
+test('the hold speed of the tightest turn is about 115 km/h on the centre line', () => {
   const limit = vSafe(TURNS[6].k);
-  assert.ok(limit > 33 && limit < 38, `vSafe(${TURNS[6].k}) = ${limit}`);
+  assert.ok(limit > 29 && limit < 34, `vSafe(${TURNS[6].k}) = ${limit}`);
 });
 
 test('too much speed slides the sled over the outer rim even when steering, a safe speed holds', () => {
