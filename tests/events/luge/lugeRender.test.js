@@ -326,3 +326,30 @@ test('the padding-heavy frames draw whole pixels without the retro colours', () 
     for (const color of RETRO_COLORS) assert.ok(!used.has(color), `${JSON.stringify(view)} uses ${color}`);
   }
 });
+
+test('the groove sheen leaves the finish checker and the hop band intact', () => {
+  // Rows that carry a sheen: a faint wide rect, a lighter narrower core, then the 1 px groove.
+  const sheenRows = (rects) => {
+    const rows = new Set();
+    rects.forEach((r, i) => {
+      if (r.color !== PALETTE.trackGroove || r.w !== 1 || r.y < 205) return;
+      const core = rects[i - 1];
+      const faint = rects[i - 2];
+      if (core.y === r.y && faint.y === r.y && faint.w > core.w && lum(core.color) > lum(faint.color)) rows.add(r.y);
+    });
+    return rows;
+  };
+  const cases = [
+    { rects: render({ ...BASE, s: 1056, phase: 'finished' }), mark: (r) => r.color === PALETTE.black && r.w >= 3, min: 5, band: [300, 512] },
+    { rects: render({ ...BASE, s: -3.4, phase: 'push', showRedLine: true }), mark: (r) => r.color === PALETTE.red, min: 5, band: [205, 240] }, // flags add one red rect per row: the band adds many
+  ];
+  for (const { rects, mark, min, band } of cases) {
+    const perRow = new Map();
+    for (const r of rects) if (r.y >= band[0] && r.y < band[1] && mark(r)) perRow.set(r.y, (perRow.get(r.y) ?? 0) + 1);
+    const marked = new Set([...perRow].filter(([, n]) => n >= min).map(([y]) => y));
+    const sheen = sheenRows(rects);
+    assert.ok(marked.size >= 2, `${marked.size} marked rows`);
+    assert.ok(sheen.size > 10, 'the sheen still shows on plain ice rows');
+    for (const y of marked) assert.ok(!sheen.has(y), `row ${y} has both a marking and a sheen`);
+  }
+});

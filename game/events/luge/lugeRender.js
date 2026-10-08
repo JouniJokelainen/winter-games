@@ -404,6 +404,7 @@ function drawRows(ctx, s, look, view) {
         const zi = ((CAM_H - h) * FOCAL) / dy;
         return { x, z: zi, sx: W / 2 + (sample(look.L, zi) + x) * (FOCAL / zi) };
       });
+      let marked = false; // a marking (hop band, finish checker) crosses this row: no sheen over it
       for (let i = 0; i < points.length - 1; i++) {
         const a = points[i];
         const b = points[i + 1];
@@ -431,6 +432,7 @@ function drawRows(ctx, s, look, view) {
           color = i % 2 === 0 ? PALETTE.black : PALETTE.paper;
           plain = false;
         }
+        if (!rim && !plain) marked = true;
         fillRow(ctx, a.sx, b.sx, y, mix(color, plain ? ICE_FOG : FOG_TARGET, spanFog));
       }
       // Rim outline and the two runner grooves in the bottom of the trough.
@@ -445,8 +447,10 @@ function drawRows(ctx, s, look, view) {
         const wide = Math.max(2, (0.3 * FOCAL) / zg);
         const core = Math.max(1, (0.1 * FOCAL) / zg);
         const [faint, strong] = sheenTones(iceColor(profileSlope(groove, bank), Math.abs(groove) / HALF_W, Math.floor((s + z) / 5) % 2 === 0));
-        fillRow(ctx, sx - wide, sx + wide, y, tint(faint));
-        fillRow(ctx, sx - core, sx + core, y, tint(strong));
+        if (!marked) {
+          fillRow(ctx, sx - wide, sx + wide, y, tint(faint));
+          fillRow(ctx, sx - core, sx + core, y, tint(strong));
+        }
         fillRow(ctx, sx, sx + 1, y, tint(PALETTE.trackGroove));
       }
       if (view.showLine) {

@@ -3,14 +3,13 @@
 // Everything is deterministic from seeded rngs and drawn with whole-pixel fillRects.
 import { PALETTE } from '../../engine/palette.js';
 import { createRng } from '../../engine/rng.js';
-import { W } from './lugeProjection.js';
+import { H, W } from './lugeProjection.js';
 
 const identity = (color) => color;
 const SHADOW = 'rgba(96,102,124,0.22)';
 const SHADOW_CORE = 'rgba(80,86,108,0.16)';
 const MIST_ROWS = Array.from({ length: 18 }, (_, i) => `rgba(214,213,223,${(0.05 + (i / 17) * 0.4).toFixed(3)})`);
 const DEEP_GREEN = darken(PALETTE.pineDark, 0.72);
-const H_CANVAS = 512;
 
 function darken(color, factor) {
   const part = (i) => Math.round(parseInt(color.slice(1 + i * 2, 3 + i * 2), 16) * factor).toString(16).padStart(2, '0');
@@ -69,7 +68,7 @@ export function drawLugePine(ctx, x, baseY, height, { seed = 0, tint = identity,
     const cone = 0.12 + 0.88 * (row / crown);
     const flare = 0.7 + 0.3 * u;
     const y = crownBottom - crown + row;
-    if (y < 0 || y >= H_CANVAS) continue;
+    if (y < 0 || y >= H) continue;
     let half = Math.round(maxHalf * cone * flare);
     if (near && row > 2) half += Math.round(hash01(seed, row - crown) * 2 - 0.6); // jag counted from the foot: stable as the tree grows
     half = Math.max(0, half);
