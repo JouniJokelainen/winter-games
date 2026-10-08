@@ -65,8 +65,20 @@ function fillRow(ctx, x0, x1, y, color) {
 
 const ICE_LIT = mix(PALETTE.trackIce, PALETTE.white, 0.45);
 const ICE_DARK = mix(PALETTE.trackIce, PALETTE.concrete3, 0.6);
-const RIM_COLOR = mix(PALETTE.white, PALETTE.skyLight, 0.3);
+const RIM_COLOR = mix(PALETTE.white, PALETTE.skyLight, 0.12); // icy top lip
+const LIP_EDGE = PALETTE.white; // thin highlight on the inner edge of the lip
+const WALL_SHADE = '#5a647c'; // cool shadow deep in the walls
+const ICE_SHEEN = mix(PALETTE.trackIce, PALETTE.white, 0.3); // streak along each runner groove
+const ICE_FOG = mix(FOG_TARGET, PALETTE.white, 0.3); // the ice fades to a lighter mist than the snow: a faint sheen towards the horizon
 const X_OUT = HALF_W + WALL_T;
+
+// Padding on the outer side of a turn: a low dark-blue strip along the rim, outside the icy lip.
+const PAD_FACE = '#2f3d5c';
+const PAD_TOP_A = '#4a5d85';
+const PAD_TOP_B = '#3b4b70';
+export const PADDING_COLORS = [PAD_FACE, PAD_TOP_A, PAD_TOP_B];
+const PAD_H = 0.25; // metres above the rim (the rim is at most 2.0 m, the camera is at 2.4 m)
+const PAD_W = 0.9; // metres outwards from the rim
 
 // Cross-section sample positions: the rim caps and 24 steps across the trough.
 const SAMPLE_XS = [-X_OUT, ...Array.from({ length: 25 }, (_, i) => -HALF_W + (i * 2 * HALF_W) / 24), X_OUT];
@@ -88,10 +100,33 @@ function computeIce(slope, depth, band) {
   let color = mix(ICE_DARK, ICE_LIT, clamp(0.5 - 0.42 * slope, 0, 1));
   color = mix(color, PALETTE.skyLight, 0.12);
   color = mix(color, PALETTE.concrete3, 0.22 * depth);
+  color = mix(color, WALL_SHADE, 0.55 * depth ** 2.5);
   if (band) color = mix(color, PALETTE.white, 0.07);
   return color;
 }
 
+
+// One screen row of the padding: the face towards the track, then the top. The outer rim is the higher one.
+function drawPadding(ctx, look, bank, dy, s, y, rimSx) {
+  const height = PAD_H * clamp((Math.abs(bank) - 0.1) / 0.4, 0, 1);
+  if (height < 0.05) return;
+  const side = bank > 0 ? -1 : 1;
+  const topH = Math.min(profileHeight(side * HALF_W, bank) + height, CAM_H - 0.1);
+  const z = ((CAM_H - topH) * FOCAL) / dy;
+  const m = FOCAL / z;
+  const offset = sample(look.L, z);
+  const faceSx = W / 2 + (offset + side * X_OUT) * m;
+  const topSx = W / 2 + (offset + side * (X_OUT + PAD_W)) * m;
+  const fog = clamp((z - FOG_START) / FOG_SPAN, 0, 1);
+  const top = Math.floor((s + z) / 3) % 2 === 0 ? PAD_TOP_A : PAD_TOP_B;
+  if (side > 0) {
+    fillRow(ctx, rimSx, faceSx, y, mix(PAD_FACE, FOG_TARGET, fog));
+    fillRow(ctx, faceSx, topSx, y, mix(top, FOG_TARGET, fog));
+  } else {
+    fillRow(ctx, topSx, faceSx, y, mix(top, FOG_TARGET, fog));
+    fillRow(ctx, faceSx, rimSx, y, mix(PAD_FACE, FOG_TARGET, fog));
+  }
+}
 
 // ---- backdrop -----------------------------------------------------------------------------------
 
@@ -353,16 +388,21 @@ function drawRows(ctx, s, look, view) {
           }
         }
         if (!rim && Math.abs(midAlong - FINISH_S) < 0.55) color = i % 2 === 0 ? PALETTE.black : PALETTE.paper;
-        fillRow(ctx, a.sx, b.sx, y, mix(color, FOG_TARGET, spanFog));
+        fillRow(ctx, a.sx, b.sx, y, mix(color, rim ? FOG_TARGET : ICE_FOG, spanFog));
       }
       // Rim outline and the two runner grooves in the bottom of the trough.
       const left = points[0];
       const right = points.at(-1);
+      if (Math.abs(bank) > 0.1) drawPadding(ctx, look, bank, dy, s, y, bank > 0 ? left.sx : right.sx);
+      fillRow(ctx, points[1].sx - 1, points[1].sx, y, tint(LIP_EDGE));
+      fillRow(ctx, points.at(-2).sx, points.at(-2).sx + 1, y, tint(LIP_EDGE));
       fillRow(ctx, left.sx, left.sx + 1, y, tint(PALETTE.concrete2));
       fillRow(ctx, right.sx - 1, right.sx, y, tint(PALETTE.concrete2));
       for (const groove of [-0.9, 0.9]) {
         const zg = ((CAM_H - profileHeight(groove, bank)) * FOCAL) / dy;
         const sx = W / 2 + (sample(look.L, zg) + groove) * (FOCAL / zg);
+        const half = Math.max(1, (0.06 * FOCAL) / zg);
+        fillRow(ctx, sx - half, sx + half, y, tint(ICE_SHEEN));
         fillRow(ctx, sx, sx + 1, y, tint(PALETTE.trackGroove));
       }
       if (view.showLine) {

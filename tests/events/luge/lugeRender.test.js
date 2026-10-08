@@ -248,3 +248,19 @@ test('the venue frames draw whole pixels without the retro colours', () => {
     for (const color of RETRO_COLORS) assert.ok(!used.has(color), `${s} uses ${color}`);
   }
 });
+
+test('the outer side of a turn has padding along the rim, a straight shows only a distant sliver', async () => {
+  const { PADDING_COLORS } = await import('../../../game/events/luge/lugeRender.js');
+  const count = (view) => {
+    const ctx = recordingCtx();
+    renderLuge(ctx, view);
+    return ctx.rects.filter((r) => PADDING_COLORS.includes(r.color)).length;
+  };
+  const hairpin = count({ ...BASE, s: 662, lateral: -0.5 });
+  const rightTurn = count({ ...BASE, s: 108 });
+  const straight = count({ ...BASE, s: 60 });
+  assert.ok(hairpin > 300, `hairpin ${hairpin} padding rects`);
+  assert.ok(rightTurn > 100, `right turn ${rightTurn} padding rects`);
+  // Turn 1 is already visible far ahead at s = 60: only a few thin, distant padding rows show.
+  assert.ok(straight < 40 && straight * 8 < hairpin, `straight ${straight} padding rects`);
+});
