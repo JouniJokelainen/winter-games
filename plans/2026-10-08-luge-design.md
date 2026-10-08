@@ -9,7 +9,7 @@ Replaces the luge placeholder with a real event. Product rules: `suunnitelma.txt
 
 ## Rules
 
-- **Push phase:** Space starts the run. The player taps Space as fast as possible; each press adds 1.3 m/s and the speed decays in proportion (1.6 per second), so it settles at taps per second × 1.3 ÷ 1.6 (cap 12 m/s, floor 1 m/s). The phase ends when the sled reaches the red line (`RED_LINE_S`, 30 m from the start), where the rider hops on automatically. The push takes about 4.9 s at 8.6 taps/s (start speed 6.8 m/s), 3.7 s at 12 taps/s (9.2 m/s), 9.7 s at 4 taps/s (2.8 m/s) and about 30 s with no tapping (the runner keeps walking at 1 m/s); with no tapping the push alone takes about 30 s, so the run is rejected by the 45 s limit. The speed at the line is the entry speed of the slope.
+- **Push phase:** Space starts the run. The player taps Space as fast as possible; each press adds 1.3 m/s and the speed decays in proportion (1.6 per second), so it settles at taps per second × 1.3 ÷ 1.6 (cap 12 m/s, floor 1 m/s). The phase ends when the sled reaches the red line (`RED_LINE_S`, 20 m from the start), where the rider hops on automatically. The push takes about 3.4 s at 8.6 taps/s (start speed 7.1 m/s), 2.6 s at 12 taps/s (9.6 m/s), 6.6 s at 4 taps/s (3.2 m/s) and about 20 s with no tapping (the runner keeps walking at 1 m/s); the 45 s limit still applies to the whole run. The speed at the line is the entry speed of the slope.
 - **Slope:** the sled has track distance `s`, speed `v` and lateral position `lateral ∈ [-1, 1]` (−1 left rim, 0 centre, 1 right rim). Left/right arrows move `lateral`; Down brakes.
 - **Turns (curvature `k`, positive = right):** `outer = −lateral · sign(k)` (a right turn, k > 0, has its outer side on the left, lateral < 0). `outer > 0` speeds the sled up, `outer < 0` slows it, centre keeps speed. The effect scales with `|k|`. On straights lateral position has no effect on speed. In a turn the sled also drifts toward the outer wall (`lateral −= driftGain · v² · k · (1 − bankSupport · outer) · dt`), so the player has to steer inward; the pull back to the centre exists only on straights. The hold speed `√(lateralRate / (driftGain · |k| · (1 − bankSupport · outer)))` is the speed at which full steering still holds the line: 115 km/h on the centre line, 162 km/h on the outer side and 94 km/h on the inner side of the tightest turn. Above it the sled slides outward at the surplus rate.
 - **Crash (run rejected):** A crash happens only when the sled reaches the rim (`|lateral| ≥ 1`, `SUISTUIT RADALTA`) or a run is still going after 45 s (`AIKA YLITTYI`). There is no separate speed limit: too much speed in a turn makes the outward slide stronger than the steering, so the sled slides up the outer wall and over the rim unless the player brakes in time. A crash ends the run with `valid: false` and 0 points.
@@ -19,7 +19,7 @@ Replaces the luge placeholder with a real event. Product rules: `suunnitelma.txt
 
 ## Physics (values tuned by the bot test)
 
-- `pushGain 1.3` m/s per press, `pushRate 1.6` per second, `pushMin 1` m/s, `pushMax 12` m/s; gravity 11 m/s², drag 0.0022 /m; lateral rate 3.2 per second, return 0.4 per second on straights only; drift gain 0.07; bank support 0.5; turn gain 8 m/s² (at `|k| = 0.045`); brake 22 m/s²; time limit 45 s.
+- `pushGain 1.3` m/s per press, `pushRate 1.6` per second, `pushMin 1` m/s, `pushMax 12` m/s; gravity 8 m/s², drag 0.0022 /m; lateral rate 3.2 per second, return 0.4 per second on straights only; drift gain 0.07; bank support 0.5; turn gain 8 m/s² (at `|k| = 0.045`); brake 22 m/s²; time limit 45 s.
 
 ## Presentation
 
@@ -53,7 +53,7 @@ Other changes:
 
 - `lugeSim` unit tests:
   - Space starts the push phase; presses accelerate up to the cap; speed decays without presses
-  - tapping faster (every 5 ticks) saves about 1.4 s, tapping slowly (every 15 ticks) costs about 5.2 s (relative to the good line)
+  - tapping faster (every 5 ticks) saves about 1.1 s, tapping slowly (every 15 ticks) costs about 3.6 s (relative to the good line)
   - the hop at the red line passes the push speed to the slope
   - outer side speeds up, inner side slows down, centre keeps speed in a turn
   - Down brakes

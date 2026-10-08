@@ -6,7 +6,7 @@ export const LUGE_CONFIG = {
   pushRate: 1.6, // share of the speed lost per second while pushing: the speed settles at taps per second · pushGain / pushRate
   pushMin: 1, // the runner never stops walking
   pushMax: 12,
-  gravity: 11,
+  gravity: 8,
   drag: 0.0022,
   brake: 22,
   lateralRate: 3.2, // lateral units per second while an arrow is held
