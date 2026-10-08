@@ -309,7 +309,7 @@ function drawHud(ctx, view) {
   const maxKmh = 200;
   ctx.fillStyle = PALETTE.darkGrey;
   ctx.fillRect(barX, 26, barWidth, 10);
-  ctx.fillStyle = view.warning && Math.floor(view.time * 6) % 2 === 0 ? PALETTE.orange : PALETTE.paper;
+  ctx.fillStyle = view.warning && Math.floor((view.clock ?? view.time) * 6) % 2 === 0 ? PALETTE.orange : PALETTE.paper;
   ctx.fillRect(barX, 26, Math.round((barWidth * Math.min(view.speedKmh, maxKmh)) / maxKmh), 10);
   if (view.limitKmh) {
     ctx.fillStyle = PALETTE.red;
@@ -333,7 +333,8 @@ export function renderLuge(ctx, view) {
     ctx.fillStyle = PALETTE.paper;
     for (let i = 0; i < 16; i++) ctx.fillRect(Math.round(x + (rng() - 0.5) * 70), Math.round(y - rng() * 28), 2, 2);
   }
-  drawSnowfall(ctx, view.time);
+  const clock = view.clock ?? view.time;
+  drawSnowfall(ctx, clock);
   drawHud(ctx, view);
-  if (view.banner) drawBlinking(ctx, view.banner, W / 2, 96, view.time, { scale: TEXT_SCALE, color: PALETTE.paper, shadow: PALETTE.slate });
+  if (view.banner) drawBlinking(ctx, view.banner, W / 2, 96, clock, { scale: TEXT_SCALE, color: PALETTE.paper, shadow: PALETTE.slate });
 }

@@ -93,9 +93,14 @@ export class LugeScene {
     return Math.abs(state.lateral) >= WARNING_LATERAL || state.v >= this.limit() * WARNING_SPEED_SHARE;
   }
 
+  nearRim() {
+    const { state } = this;
+    return state.phase === 'running' && Math.abs(state.lateral) >= WARNING_LATERAL;
+  }
+
   warn(dt) {
     this.sinceWarning += dt;
-    if (this.isWarning() && this.sinceWarning >= WARNING_INTERVAL) {
+    if (this.nearRim() && this.sinceWarning >= WARNING_INTERVAL) {
       this.game.audio.playSfx('warning');
       this.sinceWarning = 0;
     }
@@ -108,6 +113,7 @@ export class LugeScene {
     renderLuge(ctx, {
       s: state.s - SLED_Z,
       time: state.time,
+      clock: this.time,
       speedKmh: state.v * MS_TO_KMH,
       lateral: Math.max(-1, Math.min(1, state.lateral)),
       phase: pushing ? 'push' : state.phase === 'finished' ? 'finished' : 'ride',

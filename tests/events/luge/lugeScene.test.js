@@ -65,6 +65,40 @@ test('buildAttempt scores finished runs and labels the crash reasons', () => {
   assert.deepEqual(buildAttempt(wall), { valid: false, points: 0, time: 12, summary: ['AIKA 12,00 S', 'HYLÄTTY', 'OSUIT LAITAAN'] });
 });
 
+function rectCountAtClock(scene, clock) {
+  scene.time = clock;
+  const ctx = recordingCtx();
+  scene.render(ctx);
+  return ctx.rects.length;
+}
+
+test('the crashed banner blinks on the scene clock even though the sim time is frozen', () => {
+  const { scene } = makeScene();
+  Object.assign(scene.state, { phase: 'crashed', reason: 'wall', s: 662, lateral: 1, time: 20.97 });
+  const on = rectCountAtClock(scene, 0);
+  const off = rectCountAtClock(scene, 0.5);
+  assert.ok(on > off, `banner rects: on ${on}, off ${off}`);
+});
+
+test('the ready banner blinks on the scene clock', () => {
+  const { scene } = makeScene();
+  const on = rectCountAtClock(scene, 0);
+  const off = rectCountAtClock(scene, 0.5);
+  assert.ok(on > off, `banner rects: on ${on}, off ${off}`);
+});
+
+function runWithLateral(lateral, v) {
+  const { scene, sounds } = makeScene();
+  Object.assign(scene.state, { phase: 'running', s: 300, v, lateral });
+  scene.update(1 / 60, fakeInput([]));
+  return sounds;
+}
+
+test('the warning beep depends on rim proximity only', () => {
+  assert.equal(runWithLateral(0, 60).includes('warning'), false);
+  assert.equal(runWithLateral(0.9, 20).includes('warning'), true);
+});
+
 test('the label shows the attempt, and rendering works in every phase', () => {
   const { scene } = makeScene();
   assert.equal(scene.label, 'YRITYS 2/3');
