@@ -90,3 +90,15 @@ test('tapping faster saves time and tapping slowly costs time, with the same dri
   assert.ok(good.time - fast.time > 0.8, `fast ${fast.time} vs good ${good.time}`);
   assert.ok(lazy.time - good.time > 3, `lazy ${lazy.time} vs good ${good.time}`);
 });
+
+test('a bot that follows the marked racing line finishes in about 29 s with a safe margin to the rim', () => {
+  const state = createLugeState();
+  let widest = 0;
+  for (let tick = 0; tick < 60 * 120 && state.phase !== 'crashed' && state.phase !== 'finished'; tick++) {
+    stepLuge(state, botControls(state, BOTS.line, tick), DT);
+    if (state.phase === 'running') widest = Math.max(widest, Math.abs(state.lateral));
+  }
+  assert.equal(state.phase, 'finished');
+  assert.ok(state.time > 28 && state.time < 30.5, `line took ${state.time}`);
+  assert.ok(widest < 0.75, `widest lateral ${widest}`);
+});

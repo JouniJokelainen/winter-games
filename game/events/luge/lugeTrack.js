@@ -48,3 +48,13 @@ export function turnNumber(s) {
   const index = TURNS.findIndex((turn) => s < turn.at + turn.length);
   return index === -1 ? TURNS.length : index + 1;
 }
+
+// The recommended line: halfway from the centre to the outer rim in every turn (a right turn has its outer side on
+// the left, lateral < 0), ramping in and out with the turn, in the middle on the straights.
+export const RACING_LINE_OUTER = 0.5;
+
+export function racingLineAt(s) {
+  let line = 0;
+  for (const turn of TURNS) line -= Math.sign(turn.k) * RACING_LINE_OUTER * weight(s, turn);
+  return line;
+}

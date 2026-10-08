@@ -6,17 +6,19 @@ import { drawText } from '../../engine/font.js';
 import { PALETTE } from '../../engine/palette.js';
 import { createRng } from '../../engine/rng.js';
 import { drawForestLayer, drawPine, drawSnowfall } from '../../engine/scenery.js';
-import { drawRunner, drawSledAndRider } from './lugeSled.js';
+import { drawRunner, drawSledAndRider, SLED_X_RANGE } from './lugeSled.js';
 import {
   bankFor, CAM_H, FOCAL, H, HALF_W, HORIZON, lookahead, MAX_Z, profileHeight, profileSlope, project, sample, SLED_Z, W, WALL_T,
 } from './lugeProjection.js';
-import { FINISH_S, headingAt, RED_LINE_S, TURNS } from './lugeTrack.js';
+import { FINISH_S, headingAt, racingLineAt, RED_LINE_S, TURNS } from './lugeTrack.js';
 
 const HUD_HEIGHT = 44;
 const TEXT_SCALE = 2;
 const SKY_BANDS = [PALETTE.mist0, PALETTE.mist1, PALETTE.mist2, PALETTE.mist3, PALETTE.mist4];
 const FOG_TARGET = PALETTE.mist3;
 const FOG_START = 40;
+const LINE_DASH = 1.5; // metres per dash and per gap
+const LINE_WIDTH = 0.1; // metres
 const FOG_SPAN = 150;
 const SPECTATOR_COLORS = [PALETTE.suitPink, PALETTE.guide, PALETTE.wood2, PALETTE.pineLight, PALETTE.concrete1, PALETTE.red];
 
@@ -290,6 +292,16 @@ function drawRows(ctx, s, look, view) {
         const zg = ((CAM_H - profileHeight(groove, bank)) * FOCAL) / dy;
         const sx = W / 2 + (sample(look.L, zg) + groove) * (FOCAL / zg);
         fillRow(ctx, sx, sx + 1, y, tint(PALETTE.trackGroove));
+      }
+      if (view.showLine) {
+        const along = s + z;
+        if (Math.floor(along / LINE_DASH) % 2 === 0) {
+          const x = racingLineAt(along) * SLED_X_RANGE;
+          const zl = ((CAM_H - profileHeight(x, bank)) * FOCAL) / dy;
+          const sx = W / 2 + (sample(look.L, zl) + x) * (FOCAL / zl);
+          const width = Math.max(1, Math.round((LINE_WIDTH * FOCAL) / zl));
+          fillRow(ctx, sx - width / 2, sx + width / 2, y, tint(PALETTE.orange));
+        }
       }
       clip[y] = { left: left.sx, right: right.sx, z: Math.min(left.z, right.z) };
     }

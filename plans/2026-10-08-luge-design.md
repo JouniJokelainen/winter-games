@@ -25,6 +25,7 @@ Replaces the luge placeholder with a real event. Product rules: `suunnitelma.txt
 
 - **Camera:** from behind the rider, pseudo-3D (prototype): U-shaped ice trough with rims, banking in turns, spectators and winter scenery. Distance is shown by scrolling the track.
 - **Sled and rider:** rider lying head-first (style C), rolls with the wall under the sled; runner pushing in the push phase, red line on the ice.
+- **Racing line:** In practice mode a dashed orange racing line marks the recommended line: halfway from the centre to the outer rim in every turn (ramping in and out with the turn) and in the middle on straights. It is not shown in competitions. A bot that follows it finishes in ≈ 28.9 s and stays within |lateral| 0.6 of the centre.
 - **HUD:** same bar as the other events: AIKA, speed in km/h with a bar, attempt label (`YRITYS n/3` or `HARJOITUS n`). The red marker shows the hold speed at the sled's current lateral position for the tightest turn within 120 m ahead (the speed the steering can still hold). A crashed sled slides over the outer rim during the hold.
 - **Banners:** `VÄLILYÖNTI = LÄHTÖ` (blinking), `MAALI!`, `HYLÄTTY`.
 - **Sounds:** `push` on Space presses, `warning` (only when near the rim), `crash` and `fail` on a crash, `finish` at the finish. No continuous sound.
@@ -60,6 +61,7 @@ Other changes:
   - finish and time
 - **Bot test:** an automatic driver runs the real track through `stepLuge` at 1/60 s:
   - good line (strong push, outer line 0.35): 28.5–30.5 s; centre line 30.5–33 s; average 33–36.5 s; careless player (wide tolerance 0.12, short look-ahead 50 m) finishes 30–34 s; no steering or braking alone: crash; steering without braking slides over the rim at turn 7
+  - line bot (follows the marked racing line): 28–30.5 s, widest |lateral| < 0.75
 - Render test: every phase renders with whole-pixel rects only and without the old retro colours.
 - Event contract and flow tests keep passing; the server accepts luge attempts.
 - Browser check in dev mode (`npm run dev`): a full run, a crash, the finish, the pause menu over luge, 60 fps.

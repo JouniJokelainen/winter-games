@@ -1,16 +1,18 @@
 import { createLugeState, speedLimitAhead, stepLuge } from '../../game/events/luge/lugeSim.js';
-import { curvatureAt } from '../../game/events/luge/lugeTrack.js';
+import { curvatureAt, racingLineAt } from '../../game/events/luge/lugeTrack.js';
 import { fakeInput } from './fakeInput.js';
 
 // pushEvery: ticks between taps; look: metres of track watched for the speed limit; margin: share of the limit the
 // bot is willing to carry into a turn; outer: how far toward the outer side it steers in a turn (0 = centre); it also assumes that
-// position when it computes the speed limit; dead: how far from the target position the bot lets the sled wander before steering back.
+// position when it computes the speed limit; dead: how far from the target position the bot lets the sled wander before steering back;
+// followLine: steer along the marked racing line instead of a fixed share of the outer side.
 export const BOTS = {
   good: { pushEvery: 7, look: 120, margin: 0.97, outer: 0.35, dead: 0.04 },
   centre: { pushEvery: 7, look: 120, margin: 0.97, outer: 0, dead: 0.04 },
   average: { pushEvery: 9, look: 60, margin: 0.8, outer: 0.2, dead: 0.04 },
   careless: { pushEvery: 8, look: 50, margin: 0.9, outer: 0.1, dead: 0.12 },
   fast: { pushEvery: 5, look: 120, margin: 0.97, outer: 0.35, dead: 0.04 },
+  line: { pushEvery: 7, look: 120, margin: 0.97, outer: 0.5, dead: 0.04, followLine: true },
   lazy: { pushEvery: 15, look: 120, margin: 0.97, outer: 0.35, dead: 0.04 },
 };
 
@@ -21,7 +23,9 @@ export function botControls(state, profile, tick) {
     return { left: false, right: false, down: false, pushes: tick % profile.pushEvery === 0 ? 1 : 0 };
   }
   const k = curvatureAt(state.s);
-  const target = Math.abs(k) > TURN_CURVATURE ? -Math.sign(k) * profile.outer : 0;
+  const target = profile.followLine
+    ? racingLineAt(state.s)
+    : (Math.abs(k) > TURN_CURVATURE ? -Math.sign(k) * profile.outer : 0);
   return {
     left: state.lateral > target + profile.dead,
     right: state.lateral < target - profile.dead,

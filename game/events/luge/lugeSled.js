@@ -8,7 +8,7 @@ import { profileHeight, profileSlope, project, SLED_Z } from './lugeProjection.j
 
 const STYLE = SKIER_STYLES.classic;
 const SLED_LENGTH = 1.45;
-const SLED_X_RANGE = 1.9; // metres from the centre line at lateral = ±1
+export const SLED_X_RANGE = 1.9; // metres from the centre line at lateral = ±1
 const SCALE = 1.2; // the sled and rider are drawn a little larger than life so they read well
 
 // Scanline fill of a convex polygon given as [x, y] screen points.

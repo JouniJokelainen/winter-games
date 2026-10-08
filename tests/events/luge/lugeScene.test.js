@@ -4,6 +4,7 @@ import { FINISH_HOLD_SECONDS, LugeScene, buildAttempt } from '../../../game/even
 import { createLugeState } from '../../../game/events/luge/lugeSim.js';
 import { fakeInput } from '../../helpers/fakeInput.js';
 import { BOTS, botInput } from '../../helpers/lugeBot.js';
+import { PALETTE } from '../../../game/engine/palette.js';
 import { recordingCtx } from '../../helpers/recordingCtx.js';
 
 function makeScene(options = {}) {
@@ -136,4 +137,15 @@ test('a crashed sled slides over the rim during the hold', () => {
   assert.ok(scene.displayLateral() < -1.2);
   scene.state.phase = 'running';
   assert.equal(scene.displayLateral(), -1);
+});
+
+test('the racing line is shown in practice and hidden in a competition', () => {
+  const lineRects = (mode) => {
+    const { scene } = makeScene({ mode });
+    Object.assign(scene.state, { phase: 'running', s: 120, v: 30 });
+    const ctx = recordingCtx();
+    scene.render(ctx);
+    return ctx.rects.filter((r) => r.color === PALETTE.orange).length;
+  };
+  assert.ok(lineRects('practice') > lineRects('competition') + 20);
 });

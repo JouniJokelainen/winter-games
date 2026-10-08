@@ -34,3 +34,14 @@ test('the speed bar reaches full width only at 200 km/h', () => {
   assert.deepEqual(bar(100), [75]);
   assert.deepEqual(bar(200), [150]);
 });
+
+test('the racing line is drawn in orange dashes only when asked for', () => {
+  const orange = (view) => {
+    const ctx = recordingCtx();
+    renderLuge(ctx, view);
+    for (const r of ctx.rects) assert.ok([r.x, r.y, r.w, r.h].every(Number.isInteger), JSON.stringify(r));
+    return ctx.rects.filter((r) => r.color === PALETTE.orange).length;
+  };
+  const view = { ...BASE, s: 120 }; // inside the first turn
+  assert.ok(orange({ ...view, showLine: true }) > orange(view) + 20);
+});

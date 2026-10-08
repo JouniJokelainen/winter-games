@@ -53,6 +53,7 @@ export class LugeScene {
     this.onComplete = onComplete;
     this.state = createLugeState();
     this.label = mode === 'competition' ? `YRITYS ${attemptNumber}/${ATTEMPTS_PER_EVENT}` : `HARJOITUS ${attemptNumber}`;
+    this.showLine = mode !== 'competition';
     this.time = 0;
     this.holdTime = 0;
     this.sinceWarning = WARNING_INTERVAL;
@@ -136,6 +137,7 @@ export class LugeScene {
       banner: BANNERS[state.phase],
       stride: (state.s / STRIDE_LENGTH) % 1,
       showRedLine: pushing,
+      showLine: this.showLine,
     });
   }
 }
