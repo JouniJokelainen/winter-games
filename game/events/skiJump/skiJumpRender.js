@@ -9,6 +9,7 @@ import {
 import { drawDawnScenery } from '../../engine/venueBackdrop.js';
 import { hillHeightAt, inrunHeightAt, inrunPointAt } from './hill.js';
 import { JUMP_CONFIG, predictTouchdown } from './skiJumpSim.js';
+import { drawBoards, drawJudgesTower, drawStartHouse, drawTower, drawWindScreens } from './tower.js';
 import { drawSkier as drawJumper, SKIER_STYLES, skierSilhouette } from './skier.js';
 
 // This scene draws at the full 640×512 canvas resolution (see SkiJumpScene.highResolution).
@@ -34,10 +35,6 @@ const SIDE_BAND_PX = 10;
 const SLAB_BOTTOM = SIDE_TOP + SIDE_BANDS.length * SIDE_BAND_PX;
 const PLATFORM_PX = 140;
 
-const PILLAR_SPACING_M = 10;
-const PILLAR_WIDTH_PX = 56;
-const CONCRETE = [PALETTE.concrete0, PALETTE.concrete1, PALETTE.concrete2, PALETTE.concrete3];
-const TABLE_WALL_FROM_M = -14;
 const GUIDE_OFFSET_M = 1.2;
 const VALLEY_Y = -40; // snow ground under the start of the inrun, in metres
 const LIP_GROUND_Y = -4; // snow ground just below the lip, in metres
@@ -89,6 +86,11 @@ function groundHeightAt(hill, x) {
   return LIP_GROUND_Y + (VALLEY_Y - LIP_GROUND_Y) * t;
 }
 
+// Projection helpers and slab geometry shared with tower.js.
+const TOWER_VIEW = {
+  PX_PER_M, PLATFORM_PX, SLAB_BOTTOM, FAR_RAIL_TOP, toScreen, groundHeightAt,
+};
+
 // ---- ground, structures and markings ----------------------------------------------------------
 
 function drawGround(ctx, state, camera) {
@@ -105,54 +107,6 @@ function drawGround(ctx, state, camera) {
       ctx.fillStyle = PALETTE.snowDark;
       ctx.fillRect(sx, sy, 1, 2);
     }
-  }
-}
-
-// A vertical concrete block between screen columns [left, right) from y0 down to the ground,
-// shaded from lit (left) to dark (right) in four vertical bands.
-function drawConcreteBlock(ctx, camera, hill, left, right, y0) {
-  const width = right - left;
-  for (let sx = Math.max(0, left); sx < Math.min(SCREEN_WIDTH, right); sx++) {
-    const x = (sx + camera.x) / PX_PER_M;
-    const bottom = Math.min(SCREEN_HEIGHT, toScreen(camera, x, groundHeightAt(hill, x)).sy);
-    if (bottom <= y0) continue;
-    const band = Math.min(CONCRETE.length - 1, Math.floor(((sx - left) / width) * CONCRETE.length));
-    ctx.fillStyle = CONCRETE[band];
-    ctx.fillRect(sx, y0, 1, bottom - y0);
-  }
-}
-
-function drawPillars(ctx, state, camera) {
-  const { hill } = state;
-  for (let x = hill.inrunStart.x + 5; x < TABLE_WALL_FROM_M - 3; x += PILLAR_SPACING_M) {
-    const { sx, sy } = toScreen(camera, x, inrunHeightAt(hill, x));
-    const left = sx - PILLAR_WIDTH_PX / 2;
-    if (left > SCREEN_WIDTH || left + PILLAR_WIDTH_PX < 0) continue;
-    drawConcreteBlock(ctx, camera, hill, left, left + PILLAR_WIDTH_PX, sy + SLAB_BOTTOM - 8);
-  }
-}
-
-// The wide concrete wall under the takeoff table and its shadow on the snow in front of it.
-function drawTableWall(ctx, state, camera) {
-  const { hill } = state;
-  const left = toScreen(camera, TABLE_WALL_FROM_M, 0).sx;
-  const right = toScreen(camera, -1, 0).sx;
-  for (let sx = Math.max(0, right); sx < Math.min(SCREEN_WIDTH, right + 140); sx++) {
-    const x = (sx + camera.x) / PX_PER_M;
-    const { sy } = toScreen(camera, x, groundHeightAt(hill, x));
-    const depth = Math.max(0, 14 - Math.floor((sx - right) / 10));
-    if (depth === 0) continue;
-    ctx.fillStyle = PALETTE.shadow;
-    ctx.fillRect(sx, sy, 1, depth);
-  }
-  for (let sx = Math.max(0, left); sx < Math.min(SCREEN_WIDTH, right); sx++) {
-    const x = (sx + camera.x) / PX_PER_M;
-    const y0 = toScreen(camera, x, inrunHeightAt(hill, x)).sy + SLAB_BOTTOM - 4;
-    const bottom = Math.min(SCREEN_HEIGHT, toScreen(camera, x, groundHeightAt(hill, x)).sy);
-    if (bottom <= y0) continue;
-    const band = Math.min(CONCRETE.length - 1, Math.floor(((sx - left) / (right - left)) * CONCRETE.length));
-    ctx.fillStyle = CONCRETE[band];
-    ctx.fillRect(sx, y0, 1, bottom - y0);
   }
 }
 
@@ -373,10 +327,13 @@ export function renderSkiJump(ctx, { state, label, time }) {
   drawForestLayer(ctx, camera, FAR_FOREST);
   drawForestLayer(ctx, camera, NEAR_FOREST);
   drawGround(ctx, state, camera);
-  drawPillars(ctx, state, camera);
-  drawTableWall(ctx, state, camera);
+  drawTower(ctx, state, camera, TOWER_VIEW);
   drawInrun(ctx, state, camera);
+  drawStartHouse(ctx, state, camera, TOWER_VIEW, windFlagLift(state.wind), time);
   drawSpectators(ctx, state, camera);
+  drawBoards(ctx, state, camera, TOWER_VIEW);
+  drawWindScreens(ctx, state, camera, TOWER_VIEW);
+  drawJudgesTower(ctx, state, camera, TOWER_VIEW);
   drawGuideLine(ctx, state, camera);
   drawShadow(ctx, state, camera);
   drawSkier(ctx, state, camera, time);

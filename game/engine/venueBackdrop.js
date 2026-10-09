@@ -48,7 +48,7 @@ function drawSky(ctx) {
     ctx.fillStyle = skyColorAt(y + SKY_BAND / 2);
     ctx.fillRect(0, y, CANVAS_WIDTH, Math.min(SKY_BAND, PLAIN_TOP - y));
   }
-  ctx.fillStyle = PALETTE.dawnHorizon;
+  ctx.fillStyle = PALETTE.snowMid;
   ctx.fillRect(0, PLAIN_TOP, CANVAS_WIDTH, CANVAS_HEIGHT - PLAIN_TOP);
 }
 
