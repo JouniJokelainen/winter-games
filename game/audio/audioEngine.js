@@ -3,6 +3,11 @@ import { SFX } from './sfx.js';
 
 const MASTER_VOLUME = 0.5;
 const MUTE_KEY = 'winterGames.muted';
+const SETTINGS_KEY = 'winterGames.audioSettings';
+// The music bus is boosted and the effects bus lowered so the music stays audible over the effects.
+const MUSIC_GAIN = 1.6;
+const SFX_GAIN = 0.65;
+export const VOLUME_STEP = 0.1;
 const LOOP_TIMEOUT_MS = 150;
 const LOOP_SMOOTHING = 0.05;
 
@@ -24,6 +29,19 @@ function readMuted(storage) {
   }
 }
 
+function readSettings(storage) {
+  const settings = { musicOn: true, music: 1, sfx: 1 };
+  try {
+    const saved = JSON.parse(storage?.getItem(SETTINGS_KEY) ?? 'null');
+    if (typeof saved?.musicOn === 'boolean') settings.musicOn = saved.musicOn;
+    if (Number.isFinite(saved?.music)) settings.music = clamp01(saved.music);
+    if (Number.isFinite(saved?.sfx)) settings.sfx = clamp01(saved.sfx);
+  } catch {
+    // Unreadable settings: keep the defaults.
+  }
+  return settings;
+}
+
 function createNoiseBuffer(ctx) {
   const buffer = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
   const data = buffer.getChannelData(0);
@@ -37,6 +55,9 @@ export class AudioEngine {
     this.muted = readMuted(storage);
     this.ctx = null;
     this.master = null;
+    this.music = null;
+    this.sfx = null;
+    this.settings = readSettings(storage);
     this.noiseBuffer = null;
     this.wantedSong = null;
     this.sequencer = null;
@@ -55,8 +76,42 @@ export class AudioEngine {
     this.master = this.ctx.createGain();
     this.master.gain.value = this.muted ? 0 : MASTER_VOLUME;
     this.master.connect(this.ctx.destination);
+    this.music = this.ctx.createGain();
+    this.music.connect(this.master);
+    this.sfx = this.ctx.createGain();
+    this.sfx.connect(this.master);
+    this.applySettings();
     this.noiseBuffer = createNoiseBuffer(this.ctx);
     if (this.wantedSong) this.startSequencer(this.wantedSong);
+  }
+
+  applySettings() {
+    if (this.music) this.music.gain.value = this.settings.musicOn ? this.settings.music * MUSIC_GAIN : 0;
+    if (this.sfx) this.sfx.gain.value = this.settings.sfx * SFX_GAIN;
+  }
+
+  saveSettings() {
+    this.applySettings();
+    try {
+      this.storage?.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
+    } catch {
+      // Storage may be unavailable; the settings still apply for this session.
+    }
+  }
+
+  setMusicOn(on) {
+    this.settings.musicOn = on;
+    this.saveSettings();
+  }
+
+  setMusicVolume(volume) {
+    this.settings.music = clamp01(Math.round(volume * 10) / 10);
+    this.saveSettings();
+  }
+
+  setSfxVolume(volume) {
+    this.settings.sfx = clamp01(Math.round(volume * 10) / 10);
+    this.saveSettings();
   }
 
   toggleMuted() {
@@ -69,7 +124,7 @@ export class AudioEngine {
     }
   }
 
-  tone({ wave = 'square', freq, freqEnd = freq, duration, volume = 0.2, delay = 0, at = null, destination = this.master }) {
+  tone({ wave = 'square', freq, freqEnd = freq, duration, volume = 0.2, delay = 0, at = null, destination = this.sfx }) {
     if (!this.ctx) return;
     const start = at ?? this.ctx.currentTime + delay;
     const oscillator = this.ctx.createOscillator();
@@ -84,7 +139,7 @@ export class AudioEngine {
     oscillator.stop(start + duration + 0.02);
   }
 
-  noise({ duration, volume = 0.2, delay = 0, at = null, filterFreq = 2000, destination = this.master }) {
+  noise({ duration, volume = 0.2, delay = 0, at = null, filterFreq = 2000, destination = this.sfx }) {
     if (!this.ctx) return;
     const start = at ?? this.ctx.currentTime + delay;
     const source = this.ctx.createBufferSource();
@@ -113,7 +168,7 @@ export class AudioEngine {
       filter.type = def.type;
       const gain = this.ctx.createGain();
       gain.gain.value = 0;
-      source.connect(filter).connect(gain).connect(this.master);
+      source.connect(filter).connect(gain).connect(this.sfx);
       source.start();
       loop = { filter, gain, timer: null };
       this.loops.set(name, loop);

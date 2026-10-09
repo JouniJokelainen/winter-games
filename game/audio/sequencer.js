@@ -40,9 +40,9 @@ export class Sequencer {
   }
 
   start() {
-    const { ctx, master } = this.audio;
+    const { ctx, music } = this.audio;
     this.output = ctx.createGain();
-    this.output.connect(master);
+    this.output.connect(music);
     this.nextLoopTime = ctx.currentTime + 0.1;
     this.schedule();
     this.timer = setInterval(() => this.schedule(), TIMER_MS);

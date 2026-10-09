@@ -42,7 +42,7 @@ function recordingAudio() {
   const noises = [];
   const audio = {
     ctx: { currentTime: 0, createGain: () => ({ connect() {}, disconnect() {} }) },
-    master: {},
+    music: {},
     tone: (note) => tones.push(note),
     noise: (hit) => noises.push(hit),
   };
