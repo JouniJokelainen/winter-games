@@ -1,7 +1,7 @@
 import { drawPanel } from '../engine/draw.js';
 import { drawText } from '../engine/font.js';
 import { PALETTE } from '../engine/palette.js';
-import { drawVenueBackdrop } from '../engine/scenery.js';
+import { drawVenueBackdrop } from '../engine/venueBackdrop.js';
 import { EVENT_IDS } from '../core/rules.js';
 import { EVENTS } from '../events/registry.js';
 import { Menu } from '../ui/menu.js';

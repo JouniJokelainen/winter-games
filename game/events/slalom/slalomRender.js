@@ -4,6 +4,7 @@ import { drawBlinking } from '../../engine/draw.js';
 import { drawText } from '../../engine/font.js';
 import { PALETTE } from '../../engine/palette.js';
 import { drawPine, drawSnowfall } from '../../engine/scenery.js';
+import { mix } from '../../engine/venueBackdrop.js';
 import { SKIER_STYLES } from '../skiJump/skier.js';
 import { SLALOM_CONFIG } from './slalomSim.js';
 import { drawSlalomSkier } from './slalomSkier.js';
@@ -30,12 +31,17 @@ const wrap = (value, period) => ((value % period) + period) % period;
 function drawSlope(ctx, course, offset) {
   const left = toCanvasX(course.fenceLeftX);
   const right = toCanvasX(course.fenceRightX);
-  ctx.fillStyle = PALETTE.snowMid;
+  ctx.fillStyle = PALETTE.dawnSnowOuter;
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-  ctx.fillStyle = PALETTE.snowLight;
-  ctx.fillRect(left, 0, right - left, CANVAS_HEIGHT);
+  // The piste is lit by the low dawn sun from the left: bright white snow that cools slightly towards the right edge.
+  const bands = 12;
+  const bandWidth = Math.ceil((right - left) / bands);
+  for (let band = 0; band < bands; band++) {
+    ctx.fillStyle = mix(PALETTE.dawnSnowLit, PALETTE.dawnSnowWarm, band / (bands - 1));
+    ctx.fillRect(left + band * bandWidth, 0, Math.min(bandWidth, right - left - band * bandWidth), CANVAS_HEIGHT);
+  }
   // Groomer lines scrolling with the course.
-  ctx.fillStyle = PALETTE.snowMid;
+  ctx.fillStyle = PALETTE.dawnSnowShade;
   for (let y = wrap(-offset, GROOMER_SPACING); y < CANVAS_HEIGHT; y += GROOMER_SPACING) {
     ctx.fillRect(left, y, right - left, 1);
   }
@@ -53,13 +59,15 @@ function drawTrack(ctx, track, top) {
 }
 
 function drawPineWithShadow(ctx, x, baseY, height) {
-  ctx.fillStyle = PALETTE.shadow;
-  for (let i = 0; i < 6; i++) ctx.fillRect(x + 2 + i * 2, baseY - 1 + i, Math.round(height / 4), 1);
+  ctx.fillStyle = PALETTE.dawnShadow;
+  for (let i = 0; i < 8; i++) ctx.fillRect(x + 2 + i * 3, baseY - 1 + Math.floor(i / 2), Math.round(height * 0.45), 1);
   drawPine(ctx, x, baseY, height);
 }
 
 // A spectator in a winter coat and a woolly hat; every third one waves (arm up one second, down one).
 function drawSpectator(ctx, x, baseY, index, time) {
+  ctx.fillStyle = PALETTE.dawnShadow;
+  ctx.fillRect(x + 8, baseY - 3, 18, 3);
   ctx.fillStyle = PALETTE.concrete3;
   ctx.fillRect(x + 1, baseY - 6, 3, 6);
   ctx.fillRect(x + 6, baseY - 6, 3, 6);
@@ -157,14 +165,14 @@ function drawPole(ctx, pole, status, top) {
   if (status.hit) {
     // Knocked over, lying on the snow.
     for (let i = 0; i < 24; i++) {
-      ctx.fillStyle = PALETTE.shadow;
+      ctx.fillStyle = PALETTE.dawnShadow;
       ctx.fillRect(x + i, baseY - Math.floor(i / 3) + 2, 1, 2);
       ctx.fillStyle = color;
       ctx.fillRect(x + i, baseY - Math.floor(i / 3), 1, 3);
     }
   } else {
-    ctx.fillStyle = PALETTE.shadow;
-    for (let i = 0; i < 14; i++) ctx.fillRect(x + 2 + i, baseY + Math.floor(i / 3), 1, 2);
+    ctx.fillStyle = PALETTE.dawnShadow;
+    for (let i = 0; i < 30; i++) ctx.fillRect(x + 2 + i, baseY + Math.floor(i / 6), 1, 2);
     ctx.fillStyle = color;
     ctx.fillRect(x - 2, baseY - POLE_HEIGHT, 4, POLE_HEIGHT);
     const flagX = pole.side === 'left' ? x - 14 : x + 2;
@@ -189,10 +197,10 @@ function drawPole(ctx, pole, status, top) {
 function drawSkierWithShadow(ctx, state) {
   const x = toCanvasX(state.x);
   const y = SKIER_SCREEN_Y * WORLD_SCALE;
-  ctx.fillStyle = PALETTE.shadow;
+  ctx.fillStyle = PALETTE.dawnShadow;
   for (let row = -3; row <= 3; row++) {
-    const half = Math.round(16 * Math.sqrt(1 - (row / 4) ** 2));
-    ctx.fillRect(x - half + 4, y + 2 + row, half * 2, 1);
+    const half = Math.round(22 * Math.sqrt(1 - (row / 4) ** 2));
+    ctx.fillRect(x - half + 14, y + 2 + row, half * 2, 1);
   }
   drawSlalomSkier(ctx, SKIER_STYLES.classic, x, y, state.angle, state.phase === 'disqualified');
 }

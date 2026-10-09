@@ -1,7 +1,7 @@
 import { drawBlinking, drawPanel } from '../engine/draw.js';
 import { drawText } from '../engine/font.js';
 import { PALETTE } from '../engine/palette.js';
-import { drawVenueBackdrop } from '../engine/scenery.js';
+import { drawVenueBackdrop } from '../engine/venueBackdrop.js';
 
 export class InfoScene {
   constructor({ game, title, lines, prompt = 'VÄLILYÖNTI = JATKA', onContinue, minShowSeconds = 0.6 }) {

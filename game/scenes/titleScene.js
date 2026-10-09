@@ -1,11 +1,13 @@
 import { TITLE_THEME } from '../audio/songs.js';
 import { drawPanel } from '../engine/draw.js';
-import { drawText } from '../engine/font.js';
+import { drawGradientText, drawText } from '../engine/font.js';
 import { PALETTE } from '../engine/palette.js';
-import { drawVenueBackdrop } from '../engine/scenery.js';
+import { drawVenueBackdrop } from '../engine/venueBackdrop.js';
 import { Menu } from '../ui/menu.js';
 
 const TOP_COUNT = 3;
+
+const LOGO_COLORS = ['#ffffff', '#eef2fb', '#cfd9ee', '#a9b9d8', '#8497bf', '#667aa4', '#51628a'];
 
 export class TitleScene {
   constructor({ game, onCompetition, onPractice, onOptions }) {
@@ -42,9 +44,12 @@ export class TitleScene {
 
   render(ctx) {
     drawVenueBackdrop(ctx, this.time);
-    drawText(ctx, 'WINTER', 320, 60, { align: 'center', scale: 8, color: PALETTE.paper, shadow: PALETTE.slate });
-    drawText(ctx, 'GAMES', 320, 128, { align: 'center', scale: 8, color: PALETTE.paper, shadow: PALETTE.slate });
-    drawText(ctx, 'TALVIKISAT', 320, 200, { align: 'center', scale: 2, color: PALETTE.red, shadow: PALETTE.slate });
+    for (const [word, y] of [['WINTER', 52], ['GAMES', 120]]) {
+      drawGradientText(ctx, word, 320, y, {
+        align: 'center', scale: 8, colors: LOGO_COLORS, outline: PALETTE.logoOutline, depth: PALETTE.logoDepth,
+      });
+    }
+    drawText(ctx, 'TALVIKISAT', 320, 204, { align: 'center', scale: 2, color: PALETTE.red, shadow: PALETTE.slate });
     drawPanel(ctx, 180, 244, 280, 100);
     this.menu.render(ctx, 320, 262, { lineHeight: 28, scale: 2 });
     this.renderTop(ctx);
