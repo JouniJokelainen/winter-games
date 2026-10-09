@@ -2,6 +2,8 @@
 
 Retrohenkinen (Amiga/VGA-tyyli) talviurheilupeli selaimessa. Kolme lajia: **mäkihyppy**, **pujottelu** ja **ohjaskelkkailu**. Voittaja on se, jolla on eniten yhteispisteitä.
 
+![Päävalikko: Winter Games -logo, valikko ja kolme parasta tulosta](docs/images/main-menu.png)
+
 **Pelaa:** <https://jounijokelainen.github.io/winter-games/peli/>
 **Tulostaulu:** <https://jounijokelainen.github.io/winter-games/>
 
