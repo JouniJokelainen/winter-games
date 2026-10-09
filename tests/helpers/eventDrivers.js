@@ -1,6 +1,7 @@
 import { fakeInput } from './fakeInput.js';
 import { BOTS as SKI_JUMP_BOTS, botInput as skiJumpBotInput } from './skiJumpBot.js';
 import { BOTS, botInput } from './slalomBot.js';
+import { BOTS as LUGE_BOTS, botInput as lugeBotInput } from './lugeBot.js';
 
 const GENERIC_PUSH_INTERVAL = 10;
 
@@ -8,6 +9,7 @@ const GENERIC_PUSH_INTERVAL = 10;
 const DRIVERS = {
   skiJump: (scene) => skiJumpBotInput(scene.state, SKI_JUMP_BOTS.perfect),
   slalom: (scene, tick) => botInput(scene.state, BOTS.excellent, tick),
+  luge: (scene, tick) => lugeBotInput(scene.state, LUGE_BOTS.good, tick),
 };
 
 export function inputForEvent(eventId, scene, tick) {

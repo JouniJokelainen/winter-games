@@ -108,16 +108,19 @@ Retrohenkinen (Amiga/VGA-tyyli) talviurheilupeli, jossa on kolme lajia: mäkihyp
 - **Kuvakulma:** takaa, pseudo-3D-rata. Rata kaartaa kohti horisonttia, ja kelkan sijainti radan poikkileikkauksessa näkyy (sisälaita, keskellä, ulkolaita).
 - **Lähtö:**
   - Välilyönnillä lähdetään liikkeelle.
-  - Sen jälkeen tulee viiden sekunnin työntövaihe, jossa välilyönnin nopea naputtelu kiihdyttää.
+  - Työntövaihe kestää, kunnes kelkka saavuttaa punaisen viivan 20 m päässä lähdöstä. Välilyönnin naputtelu kiihdyttää: vauhti seuraa naputtelutahtia × 1,78 m/s (noin 4,5 naputusta sekunnissa antaa jo enimmäisvauhdin 8 m/s).
+  - Tarmokas naputtelu vie noin 3 s, kolme naputusta sekunnissa noin 4,2 s ja yksi naputus noin 20 s (juoksija kävelee 1 m/s).
   - Hahmo hyppää automaattisesti kelkkaan punaisen viivan kohdalla. Hyvä työntö näkyy hyvänä vauhtina mäessä.
-- **Ajanotto:** alkaa punaisesta viivasta.
+- **Ajanotto:** alkaa, kun pelaaja painaa välilyöntiä, joten työntövaihe lasketaan aikaan.
 - **Ohjaus:**
   - Nuolet vasemmalle ja oikealle ohjaavat kelkkaa, ja nuoli alas jarruttaa.
   - Käännöksessä ulkolaita kiihdyttää, keskellä vauhti pysyy ennallaan ja sisälaita hidastaa.
 - **Suistuminen:**
-  - Jokaisella käännöksellä on nopeusraja.
-  - Jos raja ylittyy ulkolaidalla, kelkka suistuu radalta ja suoritus hylätään.
-  - Varoituksena kelkka nousee seinämälle ja kuuluu kirskuntaa.
+  - Erillistä nopeusrajaa ei ole. Käännöksessä kelkka liukuu kohti ulkoseinämää (sitä enemmän, mitä suurempi vauhti ja mitä jyrkempi käännös).
+  - Pelaajan on ohjattava sisäänpäin ja jarrutettava, muuten kelkka liukuu ulkoreunan yli ja suoritus hylätään.
+  - Käännöksen ulkolaita on nopeampi ja pitää vauhdin paremmin, sisälaita hitaampi.
+  - Myös yli 45 s kestävä lasku hylätään (AIKA YLITTYI).
+  - Varoituksena reunan lähellä kuuluu varoitusäänimerkki.
 - **Pisteet:**
   - Pisteet = 60 − 5 × (sekunnit yli 30 s), alaraja 0.
   - Voimaan jää nopein hyväksytty lasku kolmesta.
@@ -125,6 +128,7 @@ Retrohenkinen (Amiga/VGA-tyyli) talviurheilupeli, jossa on kolme lajia: mäkihyp
   - lähtöpaikka, kiihdytysalue ja kelkkamäki
   - hahmo kelkkoineen ja vauhti
   - talvimaisema ja katsojat
+  - harjoituksessa katkoviivalla piirretty oranssi ihannelinja suosittelee ajolinjaa (ei näy kilpailussa)
   - paras lasku ja sen aika kolmen laskun jälkeen
 
 ## Tavoiteajat

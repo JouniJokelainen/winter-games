@@ -90,3 +90,10 @@ test('skiJumpPoints rejects an unknown landing instead of returning NaN', () => 
 test('LANDING_POINTS gives 20 for perfect, 5 for poor, 0 for a fall', () => {
   assert.deepEqual(LANDING_POINTS, { perfect: 20, poor: 5, fall: 0 });
 });
+
+test('luge: the fastest valid run counts and a crashed run is ignored however fast', () => {
+  const crashed = { valid: false, points: 0, time: 12 };
+  const slower = { valid: true, points: lugePoints(31.2), time: 31.2 };
+  const faster = { valid: true, points: lugePoints(29.8), time: 29.8 };
+  assert.equal(bestAttempt('luge', [crashed, slower, faster]), faster);
+});
