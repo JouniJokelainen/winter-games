@@ -42,6 +42,28 @@ test('the title scene uses the venue backdrop and the new look', () => {
   assert.ok(fullCanvasBackdrop(assertMenuStyle(scene, 'title')));
 });
 
+test('the title scene shows the three best totals when the board answers', async () => {
+  const top = [1, 2, 3, 4].map((n) => ({ nickname: `P${n}`, total: 200 - n }));
+  const game = fakeGame();
+  game.repository.getLeaderboard = async () => ({ top });
+  const scene = new TitleScene({ game, onCompetition() {}, onPractice() {} });
+  scene.enter();
+  await new Promise((resolve) => setImmediate(resolve));
+  const ctx = recordingCtx();
+  scene.render(ctx);
+  assert.deepEqual(scene.top.map((entry) => entry.nickname), ['P1', 'P2', 'P3']);
+});
+
+test('the title scene copes with a board that cannot be read', async () => {
+  const game = fakeGame();
+  game.repository.getLeaderboard = async () => { throw new Error('offline'); };
+  const scene = new TitleScene({ game, onCompetition() {}, onPractice() {} });
+  scene.enter();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(scene.top, []);
+  scene.render(recordingCtx());
+});
+
 test('the practice select scene uses the venue backdrop and the new look', () => {
   const scene = new PracticeSelectScene({ game: fakeGame(), onSelect() {}, onBack() {} });
   scene.update(1 / 60, fakeInput([]));
