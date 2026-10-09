@@ -2,7 +2,7 @@ import { VOLUME_STEP } from '../audio/audioEngine.js';
 import { drawPanel } from '../engine/draw.js';
 import { drawText } from '../engine/font.js';
 import { PALETTE } from '../engine/palette.js';
-import { drawVenueBackdrop } from '../engine/scenery.js';
+import { drawVenueBackdrop } from '../engine/venueBackdrop.js';
 import { Menu } from '../ui/menu.js';
 
 const percent = (volume) => `${Math.round(volume * 100)}%`;

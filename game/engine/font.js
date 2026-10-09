@@ -99,3 +99,35 @@ export function drawText(ctx, text, x, y, { color = '#ffffff', scale = 1, align 
   if (shadow) paint(ctx, chars, left + scale, top + scale, shadow, scale);
   paint(ctx, chars, left, top, color, scale);
 }
+
+// Big headline text: pixels are coloured by glyph row (`colors`, top to bottom) over an outline and a
+// stepped drop-shadow extrusion towards the bottom right.
+export function drawGradientText(ctx, text, x, y, {
+  scale = 1, align = 'left', colors, outline = null, depth = null, depthSteps = 4,
+} = {}) {
+  const chars = [...String(text)];
+  const width = textWidth(text, scale);
+  const offset = align === 'center' ? width / 2 : align === 'right' ? width : 0;
+  const left = Math.round(x - offset);
+  const top = Math.round(y);
+  const edge = Math.max(1, Math.round(scale / 4));
+  if (depth) {
+    for (let step = depthSteps; step >= 1; step--) paint(ctx, chars, left + step * edge, top + step * edge, depth, scale);
+  }
+  if (outline) {
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      paint(ctx, chars, left + dx * edge, top + dy * edge, outline, scale);
+    }
+  }
+  chars.forEach((char, index) => {
+    const rows = glyphFor(char);
+    for (let row = 0; row < GLYPH_HEIGHT; row++) {
+      ctx.fillStyle = colors[Math.min(colors.length - 1, Math.floor((row * colors.length) / GLYPH_HEIGHT))];
+      for (let col = 0; col < GLYPH_WIDTH; col++) {
+        if (rows[row][col] === '#') {
+          ctx.fillRect(left + (index * GLYPH_ADVANCE + col) * scale, top + row * scale, scale, scale);
+        }
+      }
+    }
+  });
+}

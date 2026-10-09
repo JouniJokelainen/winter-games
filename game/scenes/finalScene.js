@@ -2,7 +2,7 @@ import { FINALE_THEME } from '../audio/songs.js';
 import { drawBlinking, drawPanel } from '../engine/draw.js';
 import { drawText } from '../engine/font.js';
 import { PALETTE } from '../engine/palette.js';
-import { drawVenueBackdrop } from '../engine/scenery.js';
+import { drawVenueBackdrop } from '../engine/venueBackdrop.js';
 import { EVENTS } from '../events/registry.js';
 
 const STATUS_TEXT = {
