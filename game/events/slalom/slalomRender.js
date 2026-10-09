@@ -5,7 +5,6 @@ import { drawText } from '../../engine/font.js';
 import { PALETTE } from '../../engine/palette.js';
 import { drawPine, drawSnowfall } from '../../engine/scenery.js';
 import { mix } from '../../engine/venueBackdrop.js';
-import { buildMounds, drawMounds } from './mounds.js';
 import { SKIER_STYLES } from '../skiJump/skier.js';
 import { SLALOM_CONFIG } from './slalomSim.js';
 import { drawSlalomSkier } from './slalomSkier.js';
@@ -236,19 +235,11 @@ function drawBanner(ctx, state, time) {
   }
 }
 
-const moundsByCourse = new WeakMap();
-
-function moundsFor(course) {
-  if (!moundsByCourse.has(course)) moundsByCourse.set(course, buildMounds(course));
-  return moundsByCourse.get(course);
-}
-
 export function renderSlalom(ctx, { state, track, label, time }) {
   const { course } = state;
   const top = state.y - SKIER_SCREEN_Y;
   const offset = Math.round(top * WORLD_SCALE);
   drawSlope(ctx, course, offset);
-  drawMounds(ctx, moundsFor(course), top);
   drawTrack(ctx, track, top);
   drawSides(ctx, course, offset, time);
   drawStartHut(ctx, course, top);
