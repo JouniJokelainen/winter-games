@@ -11,6 +11,7 @@ const STATUS_TEXT = {
   published: 'TULOS TALLENNETTU JA JULKAISTU',
   saved: 'TULOS TALLENNETTU (EI JULKAISTU)',
   failed: 'TALLENNUS EPÄONNISTUI',
+  taken: 'NIMIMERKKI ON VARATTU',
 };
 
 function statusFor(response) {
@@ -24,6 +25,7 @@ export class FinalScene {
     this.competition = competition;
     this.onDone = onDone;
     this.status = 'saving';
+    this.recoveryCode = null;
     this.time = 0;
     this.highResolution = true;
   }
@@ -37,8 +39,11 @@ export class FinalScene {
   save() {
     this.status = 'saving';
     this.game.repository.saveResult(this.competition.toPayload())
-      .then((response) => { this.status = statusFor(response); })
-      .catch(() => { this.status = 'failed'; });
+      .then((response) => {
+        this.status = statusFor(response);
+        this.recoveryCode = response.recoveryCode ?? null;
+      })
+      .catch((error) => { this.status = /taken/i.test(error?.message ?? '') ? 'taken' : 'failed'; });
   }
 
   update(dt, input) {
@@ -68,9 +73,13 @@ export class FinalScene {
     ctx.fillRect(100, 240, 440, 2);
     drawText(ctx, 'YHTEENSÄ', 100, 260, { scale: 4, color: PALETTE.red });
     drawText(ctx, String(this.competition.total), 540, 260, { align: 'right', scale: 4, color: PALETTE.red });
-    const statusColor = this.status === 'failed' ? PALETTE.red : PALETTE.paper;
+    const statusColor = this.status === 'failed' || this.status === 'taken' ? PALETTE.red : PALETTE.paper;
     drawText(ctx, STATUS_TEXT[this.status], 320, 332, { align: 'center', scale: 2, color: statusColor });
     if (this.status === 'failed') drawText(ctx, 'ENTER = YRITÄ UUDELLEEN', 320, 360, { align: 'center', scale: 2, color: PALETTE.paper });
+    if (this.recoveryCode) {
+      drawText(ctx, 'PALAUTUSKOODI (KIRJOITA YLÖS)', 320, 372, { align: 'center', scale: 1, color: PALETTE.paperDim });
+      drawText(ctx, this.recoveryCode, 320, 388, { align: 'center', scale: 2, color: PALETTE.paper });
+    }
     if (this.status !== 'saving') drawBlinking(ctx, 'VÄLILYÖNTI = VALIKKOON', 320, 420, this.time, { scale: 2, color: PALETTE.paperDim });
   }
 }

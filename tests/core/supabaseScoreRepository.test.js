@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chooseScoreRepository, HttpScoreRepository, loadRemoteConfig } from '../../game/core/scoreRepository.js';
 import { LocalScoreRepository } from '../../game/core/localScoreRepository.js';
+import { DeviceKeys } from '../../game/core/deviceKeys.js';
 import { SupabaseScoreRepository } from '../../game/core/supabaseScoreRepository.js';
 
 const CONFIG = { url: 'https://example.supabase.co/', key: 'sb_publishable_test' };
@@ -63,9 +64,12 @@ test('saveResult sends the validated result to submit_result and returns the use
   const saved = await new SupabaseScoreRepository(CONFIG, fetchFn).saveResult(payload);
   const post = calls.find((call) => call.url.endsWith('/rpc/submit_result'));
   assert.equal(post.options.method, 'POST');
-  assert.equal(JSON.parse(post.options.body).p_payload.nickname, 'AKU');
+  const body = JSON.parse(post.options.body);
+  assert.equal(body.p_payload.nickname, 'AKU');
+  assert.match(body.p_secret, /^[A-HJ-NP-Z2-9]{16}$/);
   assert.equal(saved.saved, true);
   assert.equal(saved.user.bestTotal, 130);
+  assert.equal(saved.recoveryCode.replaceAll('-', ''), body.p_secret);
 });
 
 test('saveResult rejects invalid payloads without calling the server, and surfaces server errors', async () => {
@@ -98,4 +102,62 @@ test('loadRemoteConfig returns the settings, or null when missing or malformed',
   assert.equal(await loadRemoteConfig(fakeFetch(() => ({ status: 404, body: {} })).fetchFn), null);
   assert.equal(await loadRemoteConfig(fakeFetch(() => ({ body: { url: 1 } })).fetchFn), null);
   assert.equal(await loadRemoteConfig(async () => { throw new TypeError('offline'); }), null);
+});
+
+function ownershipServer(owner = null) {
+  return fakeFetch((url, options) => {
+    if (url.endsWith('/rpc/nickname_status')) {
+      const { p_secret: secret } = JSON.parse(options.body);
+      return { body: owner === null ? 'free' : owner === secret ? 'mine' : 'taken' };
+    }
+    if (url.endsWith('/rpc/submit_result')) {
+      const { p_secret: secret } = JSON.parse(options.body);
+      return owner === null || owner === secret ? { body: { saved: true } } : { status: 403, body: { message: 'nickname taken' } };
+    }
+    return { body: ROWS };
+  });
+}
+
+const OWNER = 'ABCDEFGHJKLMNPQR';
+const PAYLOAD = {
+  nickname: 'AKU',
+  events: { skiJump: { points: 60, distance: 100 }, slalom: { points: 40, time: 32 }, luge: { points: 30, time: 33 } },
+};
+
+test('checkNickname reports free, mine and taken using this device code', async () => {
+  const taken = new SupabaseScoreRepository(CONFIG, ownershipServer(OWNER).fetchFn, { keys: new DeviceKeys(null) });
+  assert.equal(await taken.checkNickname('AKU'), 'taken');
+  const keys = new DeviceKeys(null);
+  keys.set('AKU', OWNER);
+  assert.equal(await new SupabaseScoreRepository(CONFIG, ownershipServer(OWNER).fetchFn, { keys }).checkNickname('AKU'), 'mine');
+  assert.equal(await new SupabaseScoreRepository(CONFIG, ownershipServer().fetchFn, { keys: new DeviceKeys(null) }).checkNickname('AKU'), 'free');
+});
+
+test('recoverNickname stores the code only when the server confirms it, and ignores malformed codes', async () => {
+  const keys = new DeviceKeys(null);
+  const { fetchFn, calls } = ownershipServer(OWNER);
+  const repository = new SupabaseScoreRepository(CONFIG, fetchFn, { keys });
+  assert.equal(await repository.recoverNickname('AKU', 'short'), false);
+  assert.equal(calls.length, 0);
+  assert.equal(await repository.recoverNickname('AKU', 'ZZZZ-ZZZZ-ZZZZ-ZZZZ'), false);
+  assert.equal(keys.get('AKU'), null);
+  assert.equal(await repository.recoverNickname('AKU', 'abcd-efgh-jklm-npqr'), true);
+  assert.equal(keys.get('AKU'), OWNER);
+  assert.equal(repository.getRecoveryCode('AKU'), 'ABCD-EFGH-JKLM-NPQR');
+  assert.equal(repository.getRecoveryCode('BEA'), null);
+});
+
+test('saving under a nickname owned by another device fails and leaves no stray code behind', async () => {
+  const keys = new DeviceKeys(null);
+  const repository = new SupabaseScoreRepository(CONFIG, ownershipServer(OWNER).fetchFn, { keys });
+  await assert.rejects(repository.saveResult(PAYLOAD), /nickname taken/);
+  assert.equal(keys.get('AKU'), null);
+});
+
+test('a code that already worked is kept when a save fails for another reason', async () => {
+  const keys = new DeviceKeys(null);
+  keys.set('AKU', OWNER);
+  const failing = fakeFetch((url) => (url.endsWith('/rpc/submit_result') ? { status: 429, body: { message: 'rate limit' } } : { body: ROWS }));
+  await assert.rejects(new SupabaseScoreRepository(CONFIG, failing.fetchFn, { keys }).saveResult(PAYLOAD), /rate limit/);
+  assert.equal(keys.get('AKU'), OWNER);
 });
