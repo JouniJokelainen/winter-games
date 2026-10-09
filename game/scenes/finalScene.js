@@ -1,3 +1,4 @@
+import { FINALE_THEME } from '../audio/songs.js';
 import { drawBlinking, drawPanel } from '../engine/draw.js';
 import { drawText } from '../engine/font.js';
 import { PALETTE } from '../engine/palette.js';
@@ -29,6 +30,7 @@ export class FinalScene {
 
   enter() {
     this.game.audio.playSfx('finish');
+    this.game.audio.playSong(FINALE_THEME);
     this.save();
   }
 

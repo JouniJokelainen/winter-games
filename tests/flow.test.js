@@ -13,7 +13,7 @@ function fakeGame() {
   return {
     saved,
     scenes: new SceneManager(),
-    audio: { muted: false, playSfx() {}, playSong() {}, stopSong() {}, toggleMuted() { this.muted = !this.muted; } },
+    audio: { muted: false, playSfx() {}, setLoop() {}, playSong() {}, stopSong() {}, toggleMuted() { this.muted = !this.muted; } },
     repository: {
       getNicknames: async () => ['AKU'],
       saveResult: async (payload) => { saved.push(payload); return { saved: true, committed: true, pushed: true }; },

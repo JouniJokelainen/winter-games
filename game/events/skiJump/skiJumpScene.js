@@ -8,6 +8,7 @@ import { createJumpState, isJumpActive, JUMP_CONFIG, stepJump } from './skiJumpS
 export const FINISH_HOLD_SECONDS = 1;
 
 const MIN_DISTANCE = 0.1;
+const MOTION_SOUND_SPEED = 35; // m/s at which the loops reach full volume
 
 export function drawWind(rng) {
   return Math.round(rng() * JUMP_CONFIG.maxWind * 10) / 10;
@@ -25,7 +26,7 @@ export function buildAttempt(state) {
 function soundsFor(event) {
   if (event.type === 'takeoff') return event.quality === 1 ? ['jump', 'tick'] : ['jump'];
   if (event.type === 'lateTakeoff') return ['jump'];
-  if (event.type === 'touchdown') return event.landing === 'fall' ? ['crash', 'fail'] : ['land'];
+  if (event.type === 'touchdown') return event.landing === 'fall' ? ['crash', 'fail'] : ['slap'];
   return [];
 }
 
@@ -54,12 +55,21 @@ export class SkiJumpScene {
     for (const event of state.events) {
       for (const sound of soundsFor(event)) this.game.audio.playSfx(sound);
     }
+    this.playMotionSound();
     if (wasActive || isJumpActive(state)) return;
     this.holdTime += dt;
     if (this.holdTime >= FINISH_HOLD_SECONDS - 1e-9) {
       this.done = true;
       this.onComplete(buildAttempt(state));
     }
+  }
+
+  // Skis hiss on the inrun and the snow after landing, and the wind hums in flight.
+  playMotionSound() {
+    const { phase, speed } = this.state;
+    const level = speed / MOTION_SOUND_SPEED;
+    if (phase === 'inrun' || phase === 'landed') this.game.audio.setLoop('glide', level);
+    else if (phase === 'flight') this.game.audio.setLoop('wind', level);
   }
 
   render(ctx) {

@@ -14,7 +14,8 @@ const DT = 1 / 60;
 
 function recordingGame() {
   const sounds = [];
-  return { sounds, audio: { playSfx: (name) => sounds.push(name) } };
+  const loops = new Set();
+  return { sounds, loops, audio: { playSfx: (name) => sounds.push(name), setLoop: (name) => loops.add(name) } };
 }
 
 function playWithBot(scene, profile, maxTicks = 60 * 30) {
@@ -61,7 +62,8 @@ test('a perfect bot jump completes once after the hold with a valid attempt the 
   assert.equal(attempt.valid, true);
   assert.ok(attempt.distance >= 199 && attempt.distance <= 200);
   assert.equal(attempt.points, skiJumpPoints(attempt.distance, 'perfect'));
-  for (const sound of ['jump', 'tick', 'land']) assert.ok(game.sounds.includes(sound), sound);
+  for (const sound of ['jump', 'tick', 'slap']) assert.ok(game.sounds.includes(sound), sound);
+  for (const loop of ['glide', 'wind']) assert.ok(game.loops.has(loop), loop); // skis on the inrun, wind in flight
   const payload = {
     nickname: 'AKU',
     events: {

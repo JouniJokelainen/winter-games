@@ -1,8 +1,8 @@
-import { EVENT_THEME } from './audio/songs.js';
 import { Competition } from './core/competition.js';
 import { describeEventResult } from './core/format.js';
 import { ATTEMPTS_PER_EVENT } from './core/rules.js';
 import { EVENTS } from './events/registry.js';
+import { AudioOptionsScene } from './scenes/audioOptionsScene.js';
 import { FinalScene } from './scenes/finalScene.js';
 import { InfoScene } from './scenes/infoScene.js';
 import { NicknameScene } from './scenes/nicknameScene.js';
@@ -14,7 +14,11 @@ export function createFlow(game) {
   const { scenes } = game;
 
   function toTitle() {
-    scenes.replace(new TitleScene({ game, onCompetition: toNickname, onPractice: toPracticeSelect }));
+    scenes.replace(new TitleScene({ game, onCompetition: toNickname, onPractice: toPracticeSelect, onOptions: toAudioOptions }));
+  }
+
+  function toAudioOptions() {
+    scenes.replace(new AudioOptionsScene({ game, onBack: toTitle }));
   }
 
   function toNickname() {
@@ -37,7 +41,7 @@ export function createFlow(game) {
 
   function showCompetitionIntro(competition) {
     const event = EVENTS[competition.currentEventId];
-    game.audio.playSong(EVENT_THEME);
+    game.audio.playSong(event.theme);
     scenes.replace(competitionInfo({
       title: event.name,
       lines: [
@@ -98,7 +102,7 @@ export function createFlow(game) {
 
   function startPractice(eventId) {
     const event = EVENTS[eventId];
-    game.audio.playSong(EVENT_THEME);
+    game.audio.playSong(event.theme);
     const intro = new InfoScene({
       game,
       title: event.name,

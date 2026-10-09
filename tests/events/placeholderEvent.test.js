@@ -23,7 +23,7 @@ test('simulators produce attempts that follow the event contract', () => {
 
 test('placeholder scene completes exactly once on space', () => {
   const completed = [];
-  const game = { audio: { playSfx() {} } };
+  const game = { audio: { playSfx() {}, setLoop() {} } };
   const scene = new PlaceholderEventScene({
     game, eventId: 'luge', name: 'OHJASKELKKAILU', onComplete: (a) => completed.push(a), rng: createRng(1),
   });

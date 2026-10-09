@@ -24,6 +24,8 @@ const CRASH_LABEL = {
   time: 'AIKA YLITTYI',
 };
 
+const RUMBLE_SPEED = 40; // m/s at which the runner sound reaches full volume
+
 const EVENT_SOUNDS = {
   finish: ['finish'],
   crash: ['crash', 'fail'],
@@ -85,6 +87,7 @@ export class LugeScene {
         if (event.type === 'hop') this.hopClock = 0;
         for (const sound of EVENT_SOUNDS[event.type] ?? []) this.game.audio.playSfx(sound);
       }
+      if (state.phase === 'running') this.game.audio.setLoop('rumble', state.v / RUMBLE_SPEED);
       this.warn(dt);
       return;
     }
