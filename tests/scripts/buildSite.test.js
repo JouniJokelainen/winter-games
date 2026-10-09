@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildSite, remoteFromEnv } from '../../scripts/build-site.mjs';
+import { buildIdFromEnv, buildSite, remoteFromEnv, stampText } from '../../scripts/build-site.mjs';
 
 const realRepo = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -74,4 +74,48 @@ test('remoteFromEnv needs both the URL and the key', () => {
   assert.deepEqual(remoteFromEnv({ SUPABASE_URL: 'u', SUPABASE_PUBLISHABLE_KEY: 'k' }), { url: 'u', key: 'k' });
   assert.equal(remoteFromEnv({ SUPABASE_URL: 'u' }), null);
   assert.equal(remoteFromEnv({}), null);
+});
+
+test('stampText adds the build id to module addresses and the page links only', () => {
+  const js = "import { a } from './core/a.js';\nimport {\n  b,\n} from '../engine/b.js';\nimport c from 'node:fs';\nconst x = fetch('data.json');";
+  assert.equal(
+    stampText('main.js', js, 'ID1'),
+    "import { a } from './core/a.js?v=ID1';\nimport {\n  b,\n} from '../engine/b.js?v=ID1';\nimport c from 'node:fs';\nconst x = fetch('data.json');",
+  );
+  const html = '<link rel="stylesheet" href="style.css"><script type="module" src="main.js"></script><a href="peli/">x</a><a href="https://x.test/a.js">y</a>';
+  assert.equal(
+    stampText('index.html', html, 'ID1'),
+    '<link rel="stylesheet" href="style.css?v=ID1"><script type="module" src="main.js?v=ID1"></script><a href="peli/">x</a><a href="https://x.test/a.js">y</a>',
+  );
+  assert.equal(stampText('data.json', '{"from":"./a.js"}', 'ID1'), '{"from":"./a.js"}');
+});
+
+test('a stamped build addresses every module with the id and publishes version.json', async (t) => {
+  const outDir = await tempDir(t, 'wg-site-stamped-');
+  await buildSite({ repoDir: realRepo, outDir, buildId: 'abc1234567' });
+  assert.deepEqual(JSON.parse(await readFile(join(outDir, 'version.json'), 'utf8')), { id: 'abc1234567' });
+  assert.deepEqual(JSON.parse(await readFile(join(outDir, 'peli', 'version.json'), 'utf8')), { id: 'abc1234567' });
+  assert.match(await readFile(join(outDir, 'peli', 'index.html'), 'utf8'), /src="main\.js\?v=abc1234567"/);
+  assert.match(await readFile(join(outDir, 'index.html'), 'utf8'), /src="main\.js\?v=abc1234567"/);
+  const unstamped = [];
+  for (const relative of await readdir(outDir, { recursive: true })) {
+    if (!relative.endsWith('.js')) continue;
+    const text = await readFile(join(outDir, relative), 'utf8');
+    for (const match of text.matchAll(/\bfrom\s*['"](\.{1,2}\/[^'"]+)['"]/g)) {
+      if (!match[1].endsWith('?v=abc1234567')) unstamped.push(`${relative}: ${match[1]}`);
+    }
+  }
+  assert.deepEqual(unstamped, []);
+});
+
+test('an unstamped build leaves the files as they are', async (t) => {
+  const outDir = await tempDir(t, 'wg-site-plain-');
+  await buildSite({ repoDir: realRepo, outDir });
+  assert.match(await readFile(join(outDir, 'peli', 'index.html'), 'utf8'), /src="main\.js"/);
+  assert.ok(!(await readdir(outDir, { recursive: true })).includes('version.json'));
+});
+
+test('buildIdFromEnv shortens the commit hash', () => {
+  assert.equal(buildIdFromEnv({ GITHUB_SHA: '0123456789abcdef' }), '0123456789');
+  assert.equal(buildIdFromEnv({}), null);
 });

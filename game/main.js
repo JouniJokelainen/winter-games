@@ -1,5 +1,6 @@
 import { AudioEngine } from './audio/audioEngine.js';
 import { chooseScoreRepository, loadRemoteConfig } from './core/scoreRepository.js';
+import { buildIdOf, staleRedirect } from './core/updateCheck.js';
 import { FIXED_STEP } from './engine/constants.js';
 import { Input } from './engine/input.js';
 import { startLoop } from './engine/loop.js';
@@ -15,6 +16,17 @@ function safeLocalStorage() {
   } catch {
     return null;
   }
+}
+
+// A stale build (right after a deploy) reloads through the newest address before anything starts.
+const reloadTo = await staleRedirect({
+  ownId: buildIdOf(import.meta.url),
+  pathname: window.location.pathname,
+  search: window.location.search,
+});
+if (reloadTo) {
+  window.location.replace(reloadTo);
+  await new Promise(() => {});
 }
 
 const storage = safeLocalStorage();
