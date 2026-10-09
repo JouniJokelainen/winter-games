@@ -6,7 +6,11 @@ export const SFX = {
   },
   back: (audio) => audio.tone({ wave: 'square', freq: 440, freqEnd: 220, duration: 0.1, volume: 0.15 }),
   jump: (audio) => audio.tone({ wave: 'square', freq: 300, freqEnd: 900, duration: 0.25, volume: 0.2 }),
-  land: (audio) => audio.noise({ duration: 0.2, volume: 0.3, filterFreq: 1200 }),
+  slap: (audio) => {
+    audio.noise({ duration: 0.07, volume: 0.4, filterFreq: 3800 });
+    audio.noise({ duration: 0.16, volume: 0.35, filterFreq: 450 });
+    audio.tone({ wave: 'triangle', freq: 140, freqEnd: 60, duration: 0.12, volume: 0.25 });
+  },
   crash: (audio) => {
     audio.noise({ duration: 0.6, volume: 0.4, filterFreq: 600 });
     audio.tone({ wave: 'sawtooth', freq: 200, freqEnd: 50, duration: 0.5, volume: 0.2 });

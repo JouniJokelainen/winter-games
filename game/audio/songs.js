@@ -16,18 +16,25 @@ const KICK = 'C3';
 const SNARE = 'G6';
 const HAT = 'C7';
 
-// Ski jump: slow and rising, with a long open ending (A minor, no drums).
+// Ski jump: a fast, rising arpeggio over a pulsing bass and drums that build into a snare roll,
+// ending on the dominant (E) so the loop keeps the tension (A minor).
 const SKI_JUMP_LEAD = [
-  'A4 - - - C5 - - - E5 - - - D5 - C5 -',
-  'B4 - - - D5 - - - G5 - - - F5 - E5 -',
-  'C5 - - - E5 - - - A5 - - - G5 - E5 -',
-  'F5 - - - E5 - - - D5 - - - E5 - - .',
+  'A4 C5 E5 A5 E5 C5 E5 A5 A4 C5 E5 A5 E5 C5 E5 A5',
+  'G4 B4 D5 G5 D5 B4 D5 G5 F4 A4 C5 F5 C5 A4 C5 F5',
+  'A4 C5 E5 A5 E5 C5 E5 A5 C5 E5 G5 C6 G5 E5 G5 C6',
+  'B4 D5 F5 B5 F5 D5 F5 B5 E5 G#5 B5 E6 B5 G#5 B5 E6',
 ];
 const SKI_JUMP_BASS = [
-  'A2 - - - - - - - E3 - - - - - - -',
-  'G2 - - - - - - - D3 - - - - - - -',
-  'F2 - - - - - - - C3 - - - - - - -',
-  'D2 - - - - - - - E2 - - - - - - -',
+  'A2 . A2 . A2 . A2 . A2 . A2 . A2 . A2 .',
+  'G2 . G2 . G2 . G2 . F2 . F2 . F2 . F2 .',
+  'A2 . A2 . A2 . A2 . C3 . C3 . C3 . C3 .',
+  'B2 . B2 . B2 . B2 . E2 . E2 . E2 . E2 .',
+];
+const SKI_JUMP_DRUMS = [
+  `${KICK} . ${HAT} . ${SNARE} . ${HAT} . ${KICK} . ${HAT} . ${SNARE} . ${HAT} .`,
+  `${KICK} . ${HAT} . ${SNARE} . ${HAT} . ${KICK} . ${HAT} . ${SNARE} . ${HAT} .`,
+  `${KICK} . ${HAT} . ${SNARE} . ${HAT} . ${KICK} . ${HAT} . ${SNARE} . ${HAT} .`,
+  `${KICK} . ${SNARE} . ${KICK} . ${SNARE} . ${SNARE} ${SNARE} ${SNARE} ${SNARE} ${SNARE} ${SNARE} ${SNARE} ${SNARE}`,
 ];
 
 // Slalom: quick and zigzagging, the lead swings between high and low like the poles (E minor).
@@ -73,11 +80,12 @@ export const TITLE_THEME = {
 };
 
 export const SKI_JUMP_THEME = {
-  bpm: 96,
+  bpm: 140,
   stepsPerBeat: 4,
   channels: [
-    { wave: 'square', volume: 0.05, pattern: SKI_JUMP_LEAD.join(' ') },
-    { wave: 'triangle', volume: 0.12, pattern: SKI_JUMP_BASS.join(' ') },
+    { wave: 'square', volume: 0.045, pattern: SKI_JUMP_LEAD.join(' ') },
+    { wave: 'triangle', volume: 0.13, pattern: SKI_JUMP_BASS.join(' ') },
+    { wave: 'noise', volume: 0.07, pattern: SKI_JUMP_DRUMS.join(' ') },
   ],
 };
 

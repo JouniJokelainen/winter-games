@@ -7,7 +7,7 @@ import { validateResult } from '../../game/core/leaderboard.js';
 import { inputForEvent } from '../helpers/eventDrivers.js';
 
 function playAttempt(eventId, attemptNumber) {
-  const game = { audio: { playSfx() {} } };
+  const game = { audio: { playSfx() {}, setLoop() {} } };
   let attempt = null;
   const scene = EVENTS[eventId].createScene({
     game, mode: 'competition', attemptNumber, onComplete: (a) => { attempt = a; },

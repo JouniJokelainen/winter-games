@@ -3,6 +3,18 @@ import { SFX } from './sfx.js';
 
 const MASTER_VOLUME = 0.5;
 const MUTE_KEY = 'winterGames.muted';
+const LOOP_TIMEOUT_MS = 150;
+const LOOP_SMOOTHING = 0.05;
+
+// Continuous sounds made of looping filtered noise: the filter cutoff runs from `min` to `max` with the pitch
+// argument (0..1) and the volume is `volume` times the level argument (0..1).
+const LOOPS = {
+  glide: { type: 'bandpass', min: 1800, max: 4200, volume: 0.22 },
+  wind: { type: 'lowpass', min: 300, max: 900, volume: 0.32 },
+  rumble: { type: 'lowpass', min: 500, max: 1200, volume: 0.26 },
+};
+
+const clamp01 = (value) => Math.min(1, Math.max(0, value));
 
 function readMuted(storage) {
   try {
@@ -28,6 +40,7 @@ export class AudioEngine {
     this.noiseBuffer = null;
     this.wantedSong = null;
     this.sequencer = null;
+    this.loops = new Map();
   }
 
   // Browsers only allow audio after a user gesture; main.js calls this on every keydown.
@@ -85,6 +98,38 @@ export class AudioEngine {
     source.connect(filter).connect(gain).connect(destination);
     source.start(start);
     source.stop(start + duration + 0.02);
+  }
+
+  // Keeps a continuous sound going; it fades out by itself when it is not refreshed (scene paused or left).
+  setLoop(name, level, pitch = level) {
+    const def = LOOPS[name];
+    if (!this.ctx || !def) return;
+    let loop = this.loops.get(name);
+    if (!loop) {
+      const source = this.ctx.createBufferSource();
+      source.buffer = this.noiseBuffer;
+      source.loop = true;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = def.type;
+      const gain = this.ctx.createGain();
+      gain.gain.value = 0;
+      source.connect(filter).connect(gain).connect(this.master);
+      source.start();
+      loop = { filter, gain, timer: null };
+      this.loops.set(name, loop);
+    }
+    const now = this.ctx.currentTime;
+    loop.filter.frequency.setTargetAtTime(def.min + (def.max - def.min) * clamp01(pitch), now, LOOP_SMOOTHING);
+    loop.gain.gain.setTargetAtTime(def.volume * clamp01(level), now, LOOP_SMOOTHING);
+    clearTimeout(loop.timer);
+    loop.timer = setTimeout(() => this.stopLoop(name), LOOP_TIMEOUT_MS);
+  }
+
+  stopLoop(name) {
+    const loop = this.loops.get(name);
+    if (!loop) return;
+    clearTimeout(loop.timer);
+    loop.gain.gain.setTargetAtTime(0, this.ctx.currentTime, LOOP_SMOOTHING);
   }
 
   playSfx(name) {

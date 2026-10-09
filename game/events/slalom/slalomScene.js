@@ -3,7 +3,7 @@ import { ATTEMPTS_PER_EVENT } from '../../core/rules.js';
 import { slalomPoints } from '../../core/scoring.js';
 import { COURSE } from './course.js';
 import { renderSlalom } from './slalomRender.js';
-import { createSlalomState, stepSlalom } from './slalomSim.js';
+import { createSlalomState, SLALOM_CONFIG, stepSlalom } from './slalomSim.js';
 
 export const FINISH_HOLD_SECONDS = 1;
 
@@ -66,6 +66,7 @@ export class SlalomScene {
       for (const event of state.events) {
         for (const sound of EVENT_SOUNDS[event.type] ?? []) this.game.audio.playSfx(sound);
       }
+      if (state.phase === 'running') this.game.audio.setLoop('glide', state.speed / SLALOM_CONFIG.maxSpeed);
       this.recordTrack();
       this.warnNearFence(dt);
       return;

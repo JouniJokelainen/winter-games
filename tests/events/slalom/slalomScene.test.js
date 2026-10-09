@@ -12,7 +12,7 @@ const DT = 1 / 60;
 
 function recordingGame() {
   const sounds = [];
-  return { sounds, audio: { playSfx: (name) => sounds.push(name) } };
+  return { sounds, audio: { playSfx: (name) => sounds.push(name), setLoop() {} } };
 }
 
 function play(scene, inputFor, maxTicks = 60 * 120) {

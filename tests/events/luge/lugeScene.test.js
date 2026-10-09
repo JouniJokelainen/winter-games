@@ -12,7 +12,7 @@ function makeScene(options = {}) {
   const sounds = [];
   const completed = [];
   const scene = new LugeScene({
-    game: { audio: { playSfx: (name) => sounds.push(name) } },
+    game: { audio: { playSfx: (name) => sounds.push(name), setLoop() {} } },
     mode: 'competition',
     attemptNumber: 2,
     onComplete: (attempt) => completed.push(attempt),
