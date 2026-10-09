@@ -94,7 +94,7 @@ Retrohenkinen (Amiga/VGA-tyyli) talviurheilupeli, jossa on kolme lajia: mäkihyp
   - kaksi kiertämätöntä keppiä
   - hahmo ajautuu ulos rinteestä
 - **Pisteet:**
-  - Pisteet = 60 − 5 × (sekunnit yli 30 s) − 10 × törmäykset − 20 × kiertämätön keppi, alaraja 0.
+  - Pisteet = 60 − 3 × (sekunnit yli 30 s) − 10 × törmäykset − 20 × kiertämätön keppi, alaraja 0.
   - Voimaan jää pisteiltään paras hyväksytty lasku kolmesta.
 - **Näytöllä:**
   - lähtöpaikka, rinne ja hahmo
@@ -133,7 +133,7 @@ Retrohenkinen (Amiga/VGA-tyyli) talviurheilupeli, jossa on kolme lajia: mäkihyp
 
 ## Tavoiteajat
 
-Pujottelussa ja ohjaskelkkailussa 30 sekunnin tavoiteaika vaatii erinomaisen suorituksen. Keskiverto suoritus kestää 33–36 sekuntia, josta saa noin 30–45 pistettä. Radat suunnitellaan ja viritetään tämän mukaan.
+Pujottelussa ja ohjaskelkkailussa 30 sekunnin tavoiteaika vaatii erinomaisen suorituksen. Keskiverto suoritus kestää 33–36 sekuntia, josta saa pujottelussa noin 40–50 ja kelkkailussa noin 30–45 pistettä. Radat suunnitellaan ja viritetään tämän mukaan.
 
 ## Kontrollit
 

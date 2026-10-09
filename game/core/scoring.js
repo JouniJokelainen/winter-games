@@ -16,7 +16,7 @@ export function overtimeSeconds(time) {
 }
 
 export function slalomPoints({ time, hits, missed }) {
-  return Math.max(0, 60 - 5 * overtimeSeconds(time) - 10 * hits - 20 * missed);
+  return Math.max(0, 60 - 3 * overtimeSeconds(time) - 10 * hits - 20 * missed);
 }
 
 export function lugePoints(time) {

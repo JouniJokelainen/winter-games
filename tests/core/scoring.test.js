@@ -29,7 +29,7 @@ test('overtimeSeconds counts every started second over 30', () => {
 
 test('slalomPoints subtracts overtime, hits and missed poles, floors at 0', () => {
   assert.equal(slalomPoints({ time: 30, hits: 0, missed: 0 }), 60);
-  assert.equal(slalomPoints({ time: 32.4, hits: 1, missed: 1 }), 15);
+  assert.equal(slalomPoints({ time: 32.4, hits: 1, missed: 1 }), 21);
   assert.equal(slalomPoints({ time: 45, hits: 3, missed: 1 }), 0);
 });
 
