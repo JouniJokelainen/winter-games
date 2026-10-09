@@ -24,8 +24,8 @@ export const JUMP_CONFIG = {
   drag: 0.0084 * 0.51,
   liftMin: 0.9,
   offAngleDrag: 0.2,
-  poorLandingGap: 0.5,
-  perfectLandingGap: 0.15,
+  poorLandingGap: 0.6,
+  perfectLandingGap: 0.05,
   landedDecel: 8,
   fallenDecel: 15,
 };
@@ -160,6 +160,16 @@ function touchDown(state, previousX, previousY, dt) {
   state.phase = state.landing === 'fall' ? 'fallen' : 'landed';
   state.speed = Math.max(0, state.vx);
   state.events.push({ type: 'touchdown', landing: state.landing });
+}
+
+// Seconds until touchdown if the flight continued with the current angle and no gusts; null when it will not land soon.
+export function predictTouchdown(state, horizon = 3, step = 0.02) {
+  const probe = { ...state };
+  for (let t = step; t <= horizon; t += step) {
+    fly(probe, step);
+    if (probe.y <= hillHeightAt(state.hill, probe.x)) return t;
+  }
+  return null;
 }
 
 function stepFlight(state, controls, dt) {

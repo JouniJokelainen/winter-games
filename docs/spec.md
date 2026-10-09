@@ -64,9 +64,10 @@ Retrohenkinen (Amiga/VGA-tyyli) talviurheilupeli, jossa on kolme lajia: mäkihyp
   - Kulma ajelehtii itsestään (puuskat ja painovoima), ja pelaaja korjaa sitä koko lennon ajan.
   - Paras kulma on 45 astetta. Liian pysty tai liian vaakasuora asento hidastaa vauhtia.
 - **Alastulo** tehdään välilyönnillä. Ajoitusikkunat (viritetään testauksessa):
-  - yli 0,5 s ennen kosketusta: huono alastulo, 5 pistettä
-  - 0,5–0,15 s ennen kosketusta: optimaalinen alastulo, 20 pistettä
-  - alle 0,15 s ennen kosketusta, kosketuksen jälkeen tai ei painallusta: kaatuminen
+  - yli 0,6 s ennen kosketusta: huono alastulo, 5 pistettä
+  - 0,6–0,05 s ennen kosketusta: optimaalinen alastulo, 20 pistettä
+  - alle 0,05 s ennen kosketusta, kosketuksen jälkeen tai ei painallusta: kaatuminen
+  - alastulovihje: lennon aikana ruudun alareunassa on palkki, joka näyttää arvioidun ajan kosketukseen. Vihreä alue on optimaalinen ikkuna, ja ikkunassa näkyy "NYT!".
 - **Pisteet:**
   - Pituuspisteet = 60 − 2 × (200 − pituus), alaraja 0.
   - Alastulopisteet lisätään pituuspisteisiin.

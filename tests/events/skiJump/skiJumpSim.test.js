@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { HILL, hillHeightAt } from '../../../game/events/skiJump/hill.js';
 import {
-  angleEfficiency, classifyLanding, createJumpState, JUMP_CONFIG, stepJump, takeoffQuality,
+  angleEfficiency, classifyLanding, createJumpState, JUMP_CONFIG, predictTouchdown, stepJump, takeoffQuality,
 } from '../../../game/events/skiJump/skiJumpSim.js';
 
 const DT = 1 / 60;
@@ -129,12 +129,23 @@ test('flying at 45° keeps more speed and height than flying flat', () => {
 
 test('classifyLanding uses the gap between the last press and touchdown', () => {
   assert.equal(classifyLanding(null, false), 'fall');
-  assert.equal(classifyLanding(0.6, false), 'poor');
-  assert.equal(classifyLanding(0.5, false), 'perfect');
+  assert.equal(classifyLanding(0.7, false), 'poor');
+  assert.equal(classifyLanding(0.6, false), 'perfect');
   assert.equal(classifyLanding(0.3, false), 'perfect');
   assert.equal(classifyLanding(0.15, false), 'perfect');
-  assert.equal(classifyLanding(0.1, false), 'fall');
+  assert.equal(classifyLanding(0.04, false), 'fall');
   assert.equal(classifyLanding(0.3, true), 'fall');
+});
+
+test('predictTouchdown estimates the time left in flight without changing the state', () => {
+  const state = flightState({ x: 100, y: hillHeightAt(HILL, 100) + 3, vx: 20, vy: -8, time: 5, gust: 0, gustTimer: 99 });
+  const before = { ...state };
+  const predicted = predictTouchdown(state);
+  assert.deepEqual(state, before);
+  const start = state.time;
+  for (let i = 0; i < 300 && state.phase === 'flight'; i++) stepJump(state, NONE, DT);
+  assert.ok(Math.abs(predicted - (state.time - start)) < 0.1, `predicted ${predicted}, actual ${state.time - start}`);
+  assert.equal(predictTouchdown(flightState({ y: 500 }), 1), null);
 });
 
 test('touchdown measures the distance from the lip and records the landing', () => {

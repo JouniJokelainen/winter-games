@@ -7,7 +7,7 @@ import {
   drawForestLayer, drawMistySky, drawSnowfall, FAR_FOREST, NEAR_FOREST,
 } from '../../engine/scenery.js';
 import { hillHeightAt, inrunHeightAt, inrunPointAt } from './hill.js';
-import { JUMP_CONFIG } from './skiJumpSim.js';
+import { JUMP_CONFIG, predictTouchdown } from './skiJumpSim.js';
 import { drawSkier as drawJumper, SKIER_STYLES, skierSilhouette } from './skier.js';
 
 // This scene draws at the full 640×512 canvas resolution (see SkiJumpScene.highResolution).
@@ -333,6 +333,29 @@ function drawHud(ctx, state, label) {
   drawWindFlag(ctx, state.wind);
 }
 
+// Landing cue: a bar that shows the time left to touchdown, with the green zone where a press lands perfectly.
+const CUE = { x: 200, y: 470, width: 240, height: 10, maxSeconds: 1.2 };
+
+function drawLandingCue(ctx, state) {
+  if (state.phase !== 'flight') return;
+  const eta = predictTouchdown(state, CUE.maxSeconds + 0.1);
+  if (eta === null || state.takeoff?.late) return;
+  const { perfectLandingGap, poorLandingGap } = JUMP_CONFIG;
+  const xAt = (seconds) => CUE.x + Math.round(CUE.width * (1 - seconds / CUE.maxSeconds)); // the touchdown is at the right end
+  ctx.fillStyle = PALETTE.night;
+  ctx.fillRect(CUE.x - 2, CUE.y - 2, CUE.width + 4, CUE.height + 4);
+  ctx.fillStyle = PALETTE.darkGrey;
+  ctx.fillRect(CUE.x, CUE.y, CUE.width, CUE.height);
+  ctx.fillStyle = PALETTE.green;
+  ctx.fillRect(xAt(poorLandingGap), CUE.y, xAt(perfectLandingGap) - xAt(poorLandingGap), CUE.height);
+  const marker = Math.min(CUE.x + CUE.width - 2, xAt(Math.min(eta, CUE.maxSeconds)));
+  ctx.fillStyle = PALETTE.yellow;
+  ctx.fillRect(marker, CUE.y - 4, 4, CUE.height + 8);
+  if (eta <= poorLandingGap && eta >= perfectLandingGap) {
+    drawText(ctx, 'NYT!', SCREEN_WIDTH / 2, CUE.y - 30, { align: 'center', scale: 3, color: PALETTE.green, shadow: PALETTE.black });
+  }
+}
+
 function drawBanner(ctx, state, time) {
   if (state.phase === 'ready') {
     drawBlinking(ctx, 'VÄLILYÖNTI = LÄHTÖ', SCREEN_WIDTH / 2, 400, time, { scale: TEXT_SCALE, color: PALETTE.night });
@@ -359,4 +382,5 @@ export function renderSkiJump(ctx, { state, label, time }) {
   drawSnowfall(ctx, time);
   drawHud(ctx, state, label);
   drawBanner(ctx, state, time);
+  drawLandingCue(ctx, state);
 }
