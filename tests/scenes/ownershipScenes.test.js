@@ -138,6 +138,12 @@ test('the final screen shows the recovery code of a shared-board save', async ()
   assert.equal(local.recoveryCode, null);
 });
 
+test('a shared-board save says the result was stored on the leaderboard, not that it is unpublished', async () => {
+  const scene = await finalScene(async () => ({ saved: true, remote: true, committed: false, pushed: false, recoveryCode: 'ABCD-EFGH-JKLM-NPQR' }));
+  assert.equal(scene.status, 'remote');
+  assert.ok(draws(scene, 'TULOS TALLENNETTU TULOSTAULUUN', 332, { scale: 2, color: PALETTE.paper }));
+});
+
 test('a nickname taken on the board is reported as taken, not as a plain failure', async () => {
   const scene = await finalScene(async () => { throw new Error('nickname taken'); });
   assert.equal(scene.status, 'taken');

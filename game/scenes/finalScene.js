@@ -8,6 +8,7 @@ import { EVENTS } from '../events/registry.js';
 const STATUS_TEXT = {
   saving: 'TALLENNETAAN...',
   local: 'TULOS TALLENNETTU SELAIMEEN',
+  remote: 'TULOS TALLENNETTU TULOSTAULUUN',
   published: 'TULOS TALLENNETTU JA JULKAISTU',
   saved: 'TULOS TALLENNETTU (EI JULKAISTU)',
   failed: 'TALLENNUS EPÄONNISTUI',
@@ -16,6 +17,7 @@ const STATUS_TEXT = {
 
 function statusFor(response) {
   if (response.local) return 'local';
+  if (response.remote) return 'remote';
   return response.pushed ? 'published' : 'saved';
 }
 
