@@ -1,4 +1,5 @@
 import { LocalScoreRepository } from './localScoreRepository.js';
+import { SupabaseScoreRepository } from './supabaseScoreRepository.js';
 
 export class HttpScoreRepository {
   constructor(fetchFn = (...args) => globalThis.fetch(...args)) {
@@ -33,24 +34,50 @@ export class HttpScoreRepository {
   }
 }
 
-// Probes the Node server once. Without it (GitHub Pages, server not running) results are kept in the
-// player's own browser. The choice is made once at start-up, so it never changes during a session.
-export async function chooseScoreRepository({
-  fetchFn = (...args) => globalThis.fetch(...args),
-  storage = null,
-  timeoutMs = 2000,
-} = {}) {
-  const http = new HttpScoreRepository(fetchFn);
+// Reads the shared-board settings that the Pages build writes next to the game; null when absent (local play).
+export async function loadRemoteConfig(fetchFn = (...args) => globalThis.fetch(...args), path = 'supabase-config.json') {
+  try {
+    const response = await fetchFn(path, { cache: 'no-store' });
+    if (!response.ok) return null;
+    const config = await response.json();
+    return typeof config?.url === 'string' && typeof config?.key === 'string' ? config : null;
+  } catch {
+    return null;
+  }
+}
+
+function withTimeout(promise, timeoutMs) {
   let timer;
   const timeout = new Promise((_, reject) => {
     timer = setTimeout(() => reject(new Error('timeout')), timeoutMs);
   });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+// Picks where results go, once at start-up so it never changes during a session: the Node server
+// when it answers, else the shared Supabase board when configured and reachable, else the player's
+// own browser.
+export async function chooseScoreRepository({
+  fetchFn = (...args) => globalThis.fetch(...args),
+  storage = null,
+  timeoutMs = 2000,
+  remote = null,
+} = {}) {
+  const http = new HttpScoreRepository(fetchFn);
   try {
-    await Promise.race([http.getLeaderboard(), timeout]);
+    await withTimeout(http.getLeaderboard(), timeoutMs);
     return http;
   } catch {
-    return new LocalScoreRepository(storage);
-  } finally {
-    clearTimeout(timer);
+    // No Node server here (GitHub Pages, server not running).
   }
+  if (remote) {
+    const shared = new SupabaseScoreRepository(remote, fetchFn);
+    try {
+      await withTimeout(shared.getLeaderboard(), timeoutMs);
+      return shared;
+    } catch {
+      // The shared board is unreachable: keep results in the browser.
+    }
+  }
+  return new LocalScoreRepository(storage);
 }

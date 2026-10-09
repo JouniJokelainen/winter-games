@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildSite } from '../../scripts/build-site.mjs';
+import { buildSite, remoteFromEnv } from '../../scripts/build-site.mjs';
 
 const realRepo = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -51,4 +51,27 @@ test('the real repository builds a playable site that links to the game', async 
   assert.match(await readFile(join(outDir, 'index.html'), 'utf8'), /href="peli\/"/);
   const files = await readdir(outDir, { recursive: true });
   assert.ok(!files.some((file) => file.endsWith('.dev.json')));
+});
+
+test('shared leaderboard settings are written to the site only when given', async (t) => {
+  const root = await tempDir(t, 'wg-site-src-');
+  await write(root, 'docs/index.html', 'leaderboard');
+  await write(root, 'game/index.html', 'game');
+  const remote = { url: 'https://example.supabase.co', key: 'sb_publishable_test' };
+
+  const withRemote = await tempDir(t, 'wg-site-out-');
+  await buildSite({ repoDir: root, outDir: withRemote, remote });
+  for (const file of ['supabase-config.json', 'peli/supabase-config.json']) {
+    assert.deepEqual(JSON.parse(await readFile(join(withRemote, file), 'utf8')), remote);
+  }
+
+  const without = await tempDir(t, 'wg-site-out-');
+  await buildSite({ repoDir: root, outDir: without });
+  assert.ok(!(await readdir(without, { recursive: true })).some((file) => file.endsWith('supabase-config.json')));
+});
+
+test('remoteFromEnv needs both the URL and the key', () => {
+  assert.deepEqual(remoteFromEnv({ SUPABASE_URL: 'u', SUPABASE_PUBLISHABLE_KEY: 'k' }), { url: 'u', key: 'k' });
+  assert.equal(remoteFromEnv({ SUPABASE_URL: 'u' }), null);
+  assert.equal(remoteFromEnv({}), null);
 });

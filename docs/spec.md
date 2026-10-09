@@ -16,7 +16,9 @@ Retrohenkinen (Amiga/VGA-tyyli) talviurheilupeli, jossa on kolme lajia: mäkihyp
   - Repositorio on julkinen `JouniJokelainen/winter-games`, ja Pages julkaistaan GitHub Actionsilla: `docs/` sivuston juureen ja `game/` polkuun `peli/`.
   - Repositorio luodaan vasta käyttäjän erillisellä hyväksynnällä.
   - Pages-sivulla näytetään kymmenen parasta yhteispistemäärää, lajikohtaiset ennätykset ja viimeisimmät kilpailut samalla retrotyylillä ja paletilla kuin pelissä.
-  - Peli on pelattavissa myös Pagesissa (`peli/`). Pagesissa tulokset tallentuvat pelaajan omaan selaimeen (`localStorage`), eikä niitä lähetetä yhteiselle tulostaululle. Yhteinen tulostaulu päivittyy vain paikallisesta pelistä Node-palvelimen kautta.
+  - Peli on pelattavissa myös Pagesissa (`peli/`). Tulosten tallennuspaikka valitaan käynnistyksessä tässä järjestyksessä: paikallinen Node-palvelin, Supabasen yhteinen tulostaulu, pelaajan oma selain (`localStorage`).
+  - Supabasen tulostaulu: taulu `results` on kaikkien luettavissa, ja kirjoitus tapahtuu vain `submit_result`-funktiolla, joka tarkistaa nimimerkin ja pistekatot ja rajoittaa tulosten määrän (30 tulosta tunnissa per nimimerkki, 1000 tunnissa yhteensä). Julkaistava avain ja osoite tulevat GitHub Actionsin salaisuuksista (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`) käännösvaiheessa tiedostoon `supabase-config.json`, eikä niitä tallenneta repositorioon. Ilman asetuksia tulokset pysyvät selaimessa.
+  - Pages-sivun tulostaulu näyttää Supabasen tulokset. Paikallisen Node-palvelimen tulostaulu on erillinen ja päivittyy edelleen `docs/leaderboard.json`-tiedostoon.
 - Grafiikka:
   - Sisäinen resoluutio on 320×256 (Amiga PAL), ja kuva skaalataan kokonaislukukertoimella.
   - Kaikki grafiikka piirretään koodilla (pikselitaulukot ja muodot), eikä kuvatiedostoja käytetä.
