@@ -82,6 +82,8 @@ export const PALETTE = {
   dawnSnowWarm: '#edf0f9',
   dawnSnowOuter: '#d4d9eb',
   dawnSnowShade: '#c3cae3',
+  dawnSnowBright: '#fcfdff',
+  dawnSnowCrease: '#b4bedd',
   logoOutline: '#161c34',
   logoDepth: '#252b49',
   // Menu panels and text in the realistic style.

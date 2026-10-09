@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { PALETTE } from '../../../game/engine/palette.js';
 import { COURSE } from '../../../game/events/slalom/course.js';
 import { buildMounds, drawMounds } from '../../../game/events/slalom/mounds.js';
 import { createSlalomState } from '../../../game/events/slalom/slalomSim.js';
@@ -9,7 +10,7 @@ import { recordingCtx } from '../../helpers/recordingCtx.js';
 test('mounds are deterministic and spread along the whole course', () => {
   const mounds = buildMounds(COURSE);
   assert.deepEqual(mounds, buildMounds(COURSE));
-  assert.ok(mounds.length > 10, `${mounds.length} mounds`);
+  assert.ok(mounds.length > 40, `${mounds.length} mounds`);
   assert.ok(mounds.some((m) => m.y > COURSE.finishY / 2));
 });
 
@@ -22,7 +23,7 @@ test('mounds stay inside the fences or outside them, and clear of the start and 
     } else {
       assert.ok(m.x - m.rx >= COURSE.fenceLeftX && m.x + m.rx <= COURSE.fenceRightX, `piste mound at ${m.x}`);
     }
-    assert.ok(m.rx >= 16 && m.ry < m.rx);
+    assert.ok(m.rx >= 7 && m.rx <= 22 && m.ry < m.rx);
   }
 });
 
@@ -42,8 +43,9 @@ test('the slalom render draws mounds under the track and the poles', () => {
   const state = { ...createSlalomState(COURSE), phase: 'running', x: 160, y: mound.y + 20, speed: 100, time: 2 };
   const ctx = recordingCtx();
   renderSlalom(ctx, { state, track: [], label: 'X', time: 1 });
-  const first = ctx.rects.findIndex((r) => typeof r.color === 'string' && r.color.startsWith('rgba'));
-  assert.ok(first > 0, 'mound shading is drawn');
+  const first = ctx.rects.findIndex((r) => r.color === PALETTE.dawnSnowCrease);
+  assert.ok(first > 0, 'the mound crease is drawn');
+  assert.ok(ctx.rects.some((r) => r.color === PALETTE.dawnSnowBright), 'the mound dome is drawn');
   const skier = ctx.rects.findIndex((r) => r.color === '#2a50c0');
   assert.ok(skier > first, 'the skier is drawn after the mounds');
 });
