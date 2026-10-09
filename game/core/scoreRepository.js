@@ -71,7 +71,7 @@ export async function chooseScoreRepository({
     // No Node server here (GitHub Pages, server not running).
   }
   if (remote) {
-    const shared = new SupabaseScoreRepository(remote, fetchFn);
+    const shared = new SupabaseScoreRepository(remote, fetchFn, { storage });
     try {
       await withTimeout(shared.getLeaderboard(), timeoutMs);
       return shared;
