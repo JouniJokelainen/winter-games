@@ -4,6 +4,7 @@ import { drawBlinking } from '../../engine/draw.js';
 import { drawText } from '../../engine/font.js';
 import { PALETTE } from '../../engine/palette.js';
 import { drawPine, drawSnowfall } from '../../engine/scenery.js';
+import { mix } from '../../engine/venueBackdrop.js';
 import { SKIER_STYLES } from '../skiJump/skier.js';
 import { SLALOM_CONFIG } from './slalomSim.js';
 import { drawSlalomSkier } from './slalomSkier.js';
@@ -32,11 +33,11 @@ function drawSlope(ctx, course, offset) {
   const right = toCanvasX(course.fenceRightX);
   ctx.fillStyle = PALETTE.dawnSnowOuter;
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-  // The piste is lit by the low dawn sun from the left: warm snow that cools towards the right edge.
-  const bands = 6;
+  // The piste is lit by the low dawn sun from the left: bright white snow that cools slightly towards the right edge.
+  const bands = 12;
   const bandWidth = Math.ceil((right - left) / bands);
   for (let band = 0; band < bands; band++) {
-    ctx.fillStyle = band < 3 ? PALETTE.dawnSnowLit : PALETTE.dawnSnowWarm;
+    ctx.fillStyle = mix(PALETTE.dawnSnowLit, PALETTE.dawnSnowWarm, band / (bands - 1));
     ctx.fillRect(left + band * bandWidth, 0, Math.min(bandWidth, right - left - band * bandWidth), CANVAS_HEIGHT);
   }
   // Groomer lines scrolling with the course.
