@@ -4,8 +4,8 @@ Retrohenkinen (Amiga/VGA-tyyli) talviurheilupeli selaimessa. Kolme lajia: **mäk
 
 ![Päävalikko: Winter Games -logo, valikko ja kolme parasta tulosta](docs/images/main-menu.png)
 
-**Pelaa:** <https://jounijokelainen.github.io/winter-games/peli/>
-**Tulostaulu:** <https://jounijokelainen.github.io/winter-games/>
+**Pelaa:** <https://jounijokelainen.github.io/winter-games/peli/>  
+**Tulostaulu:** <https://jounijokelainen.github.io/winter-games/>  
 
 ## Pelin kulku
 
