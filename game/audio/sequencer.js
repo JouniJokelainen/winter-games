@@ -1,6 +1,7 @@
 const NOTE_INDEX = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
 const LOOKAHEAD_SECONDS = 0.6;
 const TIMER_MS = 100;
+const PERCUSSION_SECONDS = 0.1;
 
 export function noteToFreq(note) {
   const match = /^([A-G]#?)(\d)$/.exec(note);
@@ -28,6 +29,8 @@ export function parsePattern(pattern) {
 export class Sequencer {
   constructor(audio, song) {
     this.audio = audio;
+    this.loop = song.loop !== false;
+    this.finished = false;
     this.stepSeconds = 60 / song.bpm / song.stepsPerBeat;
     this.tracks = song.channels.map((channel) => ({ ...channel, ...parsePattern(channel.pattern) }));
     this.loopSteps = Math.max(...this.tracks.map((track) => track.length));
@@ -49,20 +52,32 @@ export class Sequencer {
   schedule() {
     const { ctx } = this.audio;
     if (this.nextLoopTime < ctx.currentTime) this.nextLoopTime = ctx.currentTime + 0.05;
-    while (this.nextLoopTime < ctx.currentTime + LOOKAHEAD_SECONDS) {
+    while (!this.finished && this.nextLoopTime < ctx.currentTime + LOOKAHEAD_SECONDS) {
       for (const track of this.tracks) {
         for (const note of track.notes) {
+          const at = this.nextLoopTime + note.step * this.stepSeconds;
+          if (track.wave === 'noise') {
+            this.audio.noise({
+              duration: Math.min(note.length * this.stepSeconds * 0.9, PERCUSSION_SECONDS),
+              volume: track.volume,
+              filterFreq: note.freq,
+              at,
+              destination: this.output,
+            });
+            continue;
+          }
           this.audio.tone({
             wave: track.wave,
             freq: note.freq,
             duration: note.length * this.stepSeconds * 0.9,
             volume: track.volume,
-            at: this.nextLoopTime + note.step * this.stepSeconds,
+            at,
             destination: this.output,
           });
         }
       }
       this.nextLoopTime += this.loopSteps * this.stepSeconds;
+      if (!this.loop) this.finished = true;
     }
   }
 

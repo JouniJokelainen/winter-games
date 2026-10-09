@@ -71,9 +71,9 @@ export class AudioEngine {
     oscillator.stop(start + duration + 0.02);
   }
 
-  noise({ duration, volume = 0.2, delay = 0, filterFreq = 2000, destination = this.master }) {
+  noise({ duration, volume = 0.2, delay = 0, at = null, filterFreq = 2000, destination = this.master }) {
     if (!this.ctx) return;
-    const start = this.ctx.currentTime + delay;
+    const start = at ?? this.ctx.currentTime + delay;
     const source = this.ctx.createBufferSource();
     source.buffer = this.noiseBuffer;
     const filter = this.ctx.createBiquadFilter();

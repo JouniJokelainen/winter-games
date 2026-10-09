@@ -1,4 +1,3 @@
-import { EVENT_THEME } from './audio/songs.js';
 import { Competition } from './core/competition.js';
 import { describeEventResult } from './core/format.js';
 import { ATTEMPTS_PER_EVENT } from './core/rules.js';
@@ -37,7 +36,7 @@ export function createFlow(game) {
 
   function showCompetitionIntro(competition) {
     const event = EVENTS[competition.currentEventId];
-    game.audio.playSong(EVENT_THEME);
+    game.audio.playSong(event.theme);
     scenes.replace(competitionInfo({
       title: event.name,
       lines: [
@@ -98,7 +97,7 @@ export function createFlow(game) {
 
   function startPractice(eventId) {
     const event = EVENTS[eventId];
-    game.audio.playSong(EVENT_THEME);
+    game.audio.playSong(event.theme);
     const intro = new InfoScene({
       game,
       title: event.name,

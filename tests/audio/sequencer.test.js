@@ -36,3 +36,37 @@ test('schedule resyncs after the clock ran ahead of the queue', () => {
   assert.ok(sequencer.nextLoopTime > 100);
   assert.ok(tones < 10);
 });
+
+function recordingAudio() {
+  const tones = [];
+  const noises = [];
+  const audio = {
+    ctx: { currentTime: 0, createGain: () => ({ connect() {}, disconnect() {} }) },
+    master: {},
+    tone: (note) => tones.push(note),
+    noise: (hit) => noises.push(hit),
+  };
+  return { audio, tones, noises };
+}
+
+test('noise channels play filtered noise at the note pitch, with short hits', () => {
+  const { audio, tones, noises } = recordingAudio();
+  const sequencer = new Sequencer(audio, { bpm: 60, stepsPerBeat: 1, channels: [{ wave: 'noise', volume: 0.1, pattern: 'C3 - - . G6' }] });
+  sequencer.start();
+  sequencer.stop();
+  assert.equal(tones.length, 0);
+  assert.equal(noises[0].filterFreq, noteToFreq('C3'));
+  assert.equal(noises[1].filterFreq, noteToFreq('G6'));
+  assert.ok(noises[0].duration <= 0.1);
+  assert.ok(Math.abs(noises[1].at - noises[0].at - 4) < 1e-9);
+});
+
+test('a song with loop: false is scheduled once', () => {
+  const { audio, tones } = recordingAudio();
+  const sequencer = new Sequencer(audio, { bpm: 600, stepsPerBeat: 1, loop: false, channels: [{ wave: 'square', volume: 0.1, pattern: 'C4 D4' }] });
+  sequencer.start();
+  audio.ctx.currentTime = 50;
+  sequencer.schedule();
+  sequencer.stop();
+  assert.equal(tones.length, 2);
+});

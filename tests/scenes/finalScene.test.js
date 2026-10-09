@@ -14,7 +14,7 @@ const competition = {
 };
 
 async function finishedScene(response) {
-  const game = { audio: { playSfx() {} }, repository: { saveResult: async () => response } };
+  const game = { audio: { playSfx() {}, playSong() {} }, repository: { saveResult: async () => response } };
   const scene = new FinalScene({ game, competition, onDone() {} });
   scene.enter();
   await new Promise((resolve) => setTimeout(resolve, 0));
