@@ -95,19 +95,20 @@ const RIDGE_COLUMN = 2;
 const FACE_SHARE = 0.6; // the lit/shaded face covers this much of the height; below it the slope fades into foothills
 
 // Faces that look left (towards the sun) are lit, the others stay in shade. The snow line is ragged.
-function drawRidge(ctx, ridge, driftX) {
+function drawRidge(ctx, ridge, driftX, shiftY = 0) {
   const offset = driftX * ridge.parallax;
+  const baseY = ridge.baseY + shiftY;
   for (let sx = 0; sx < CANVAS_WIDTH; sx += RIDGE_COLUMN) {
     const m = sx + offset;
     const height = ridgeHeight(m, ridge);
     const lit = ridgeHeight(m + RIDGE_COLUMN, ridge) >= height;
-    const top = Math.round(ridge.baseY - height);
+    const top = Math.round(baseY - height);
     const face = Math.round(height * FACE_SHARE);
     const snow = Math.round(height * ridge.snowLine + 7 * Math.sin(m * 0.11) + 4 * Math.sin(m * 0.27 + 1));
     ctx.fillStyle = ridge.rock[lit ? 0 : 1];
     ctx.fillRect(sx, top, RIDGE_COLUMN, face);
     ctx.fillStyle = mix(mix(ridge.rock[0], ridge.rock[1], 0.5), PALETTE.capShade, 0.55);
-    ctx.fillRect(sx, top + face, RIDGE_COLUMN, ridge.baseY - top - face);
+    ctx.fillRect(sx, top + face, RIDGE_COLUMN, baseY - top - face);
     ctx.fillStyle = ridge.cap[lit ? 0 : 1];
     ctx.fillRect(sx, top, RIDGE_COLUMN, Math.max(2, Math.min(Math.round(face * 0.85), snow)));
   }
@@ -221,14 +222,21 @@ function drawSnow(ctx, time) {
   }
 }
 
+// Sky, sun, ridges and haze. `camera` ({ x, y } in canvas pixels) scrolls the ridges with their own parallax;
+// the event scenes use this with their camera, the menus with a slow drift.
+export function drawDawnScenery(ctx, camera) {
+  const shiftY = Math.max(-60, Math.min(60, Math.round((camera.y - FOREST_CAMERA_Y) * 0.05)));
+  drawSky(ctx);
+  drawSun(ctx);
+  drawRidge(ctx, FAR_RIDGE, camera.x, shiftY);
+  drawHaze(ctx, 300, 440, 0.6);
+  drawRidge(ctx, NEAR_RIDGE, camera.x, shiftY);
+}
+
 export function drawVenueBackdrop(ctx, time) {
   const driftX = Math.round(time * DRIFT_PX_PER_S);
   const camera = { x: driftX, y: FOREST_CAMERA_Y };
-  drawSky(ctx);
-  drawSun(ctx);
-  drawRidge(ctx, FAR_RIDGE, driftX);
-  drawHaze(ctx, 300, 440, 0.6);
-  drawRidge(ctx, NEAR_RIDGE, driftX);
+  drawDawnScenery(ctx, camera);
   drawDistantJump(ctx);
   drawJumper(ctx, time);
   drawForestLayer(ctx, camera, FAR_FOREST);

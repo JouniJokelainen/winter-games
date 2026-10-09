@@ -4,8 +4,9 @@ import { drawBlinking } from '../../engine/draw.js';
 import { drawText } from '../../engine/font.js';
 import { PALETTE } from '../../engine/palette.js';
 import {
-  drawForestLayer, drawMistySky, drawSnowfall, FAR_FOREST, NEAR_FOREST,
+  drawForestLayer, drawSnowfall, FAR_FOREST, NEAR_FOREST,
 } from '../../engine/scenery.js';
+import { drawDawnScenery } from '../../engine/venueBackdrop.js';
 import { hillHeightAt, inrunHeightAt, inrunPointAt } from './hill.js';
 import { JUMP_CONFIG, predictTouchdown } from './skiJumpSim.js';
 import { drawSkier as drawJumper, SKIER_STYLES, skierSilhouette } from './skier.js';
@@ -368,7 +369,7 @@ function drawBanner(ctx, state, time) {
 
 export function renderSkiJump(ctx, { state, label, time }) {
   const camera = cameraFor(state);
-  drawMistySky(ctx, camera);
+  drawDawnScenery(ctx, camera);
   drawForestLayer(ctx, camera, FAR_FOREST);
   drawForestLayer(ctx, camera, NEAR_FOREST);
   drawGround(ctx, state, camera);
