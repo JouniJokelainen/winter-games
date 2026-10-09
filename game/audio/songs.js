@@ -1,15 +1,30 @@
+// Title: a slow, triumphant anthem in D major. Eight bars (D A Bm G D A G A) with a stepwise rising lead,
+// a harmony a third below, a soft sawtooth pad and a steady bass.
+const hold = (note) => [note, ...Array(15).fill('-')].join(' ');
+const pulse = (note) => `${note} . . . ${note} . . . ${note} . . . ${note} . . .`;
+
 const TITLE_LEAD = [
-  'E5 - . E5 G5 - E5 . D5 - C5 - D5 - - .',
-  'E5 - . E5 G5 - A5 . G5 - E5 - D5 - - .',
-  'C5 - . C5 E5 - G5 . A5 - G5 - E5 - - .',
-  'D5 - E5 - D5 - B4 - C5 - - - . . . .',
+  'F#5 - - - - - - - A5 - - - F#5 - E5 -',
+  'E5 - - - - - - - A5 - - - - - - -',
+  'D5 - - - F#5 - - - B5 - - - A5 - F#5 -',
+  'G5 - - - - - - - F#5 - - - E5 - D5 -',
+  'F#5 - - - A5 - - - D6 - - - - - - -',
+  'C#6 - - - B5 - A5 - E5 - - - A5 - - -',
+  'B5 - - - A5 - G5 - F#5 - - - D5 - - -',
+  'E5 - - - - - - - E5 - F#5 - E5 - - .',
 ];
-const TITLE_BASS = [
-  'C3 . C3 . G2 . G2 . A2 . A2 . G2 . G2 .',
-  'C3 . C3 . E3 . E3 . F3 . F3 . G3 . G3 .',
-  'A2 . A2 . E3 . E3 . F3 . F3 . C3 . C3 .',
-  'G2 . G2 . G2 . G2 . C3 . G2 . C3 . . .',
+const TITLE_HARMONY = [
+  'D5 - - - - - - - F#5 - - - D5 - C#5 -',
+  'C#5 - - - - - - - E5 - - - - - - -',
+  'B4 - - - D5 - - - F#5 - - - E5 - D5 -',
+  'D5 - - - - - - - D5 - - - C#5 - B4 -',
+  'D5 - - - F#5 - - - A5 - - - - - - -',
+  'E5 - - - D5 - C#5 - C#5 - - - E5 - - -',
+  'G5 - - - E5 - D5 - D5 - - - B4 - - -',
+  'C#5 - - - - - - - C#5 - D5 - C#5 - - .',
 ];
+const TITLE_PAD = ['F#4', 'C#4', 'D4', 'B3', 'F#4', 'C#4', 'B3', 'C#4'].map(hold);
+const TITLE_BASS = ['D2', 'A2', 'B2', 'G2', 'D2', 'A2', 'G2', 'A2'].map(pulse);
 
 // Percussion channels use the note as the cutoff of filtered noise: low = kick, G6 = snare, C7 = hat.
 const KICK = 'C3';
@@ -71,10 +86,12 @@ const FINALE_LEAD = 'C5 . C5 . C5 - E5 - G5 - - - C6 - - -';
 const FINALE_BASS = 'C3 - - - C3 - - - G3 - - - C3 - - -';
 
 export const TITLE_THEME = {
-  bpm: 132,
+  bpm: 84,
   stepsPerBeat: 4,
   channels: [
-    { wave: 'square', volume: 0.07, pattern: TITLE_LEAD.join(' ') },
+    { wave: 'square', volume: 0.05, pattern: TITLE_LEAD.join(' ') },
+    { wave: 'triangle', volume: 0.06, pattern: TITLE_HARMONY.join(' ') },
+    { wave: 'sawtooth', volume: 0.025, pattern: TITLE_PAD.join(' ') },
     { wave: 'triangle', volume: 0.14, pattern: TITLE_BASS.join(' ') },
   ],
 };
