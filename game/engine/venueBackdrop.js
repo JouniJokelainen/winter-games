@@ -32,7 +32,7 @@ export function mix(from, to, t) {
   return toHex(a.map((value, i) => value + (b[i] - value) * t));
 }
 
-function rgba(hex, alpha) {
+export function rgba(hex, alpha) {
   return `rgba(${channels(hex).join(', ')}, ${alpha})`;
 }
 
