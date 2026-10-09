@@ -77,6 +77,11 @@ export const PALETTE = {
   nearRockShade: '#4f5a7a',
   capLit: '#f7f2f3',
   capShade: '#c3cbe0',
+  dawnShadow: '#9aa3c8',
+  dawnSnowLit: '#f8eee8',
+  dawnSnowWarm: '#f3e7e4',
+  dawnSnowOuter: '#dde0ee',
+  dawnSnowShade: '#c4cae2',
   logoOutline: '#161c34',
   logoDepth: '#252b49',
   // Menu panels and text in the realistic style.

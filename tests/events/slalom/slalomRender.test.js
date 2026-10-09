@@ -51,7 +51,7 @@ test('standing gates cast a slanted shadow on the snow', () => {
   // Poles 0 (red, y 300) and 1 (blue, y 530) are both in view, untouched.
   const state = { ...createSlalomState(COURSE), phase: 'running', y: 340, x: 160, speed: 120, time: 2 };
   const rects = render(state);
-  assert.ok(rects.some((r) => r.color === PALETTE.shadow && r.w === 1 && r.h === 2), 'pole shadow');
+  assert.ok(rects.some((r) => r.color === PALETTE.dawnShadow && r.w === 1 && r.h === 2), 'pole shadow');
   assert.ok(rects.some((r) => r.color === PALETTE.red && r.w === 4 && r.h === 28), 'red pole');
   assert.ok(rects.some((r) => r.color === PALETTE.guide && r.w === 4 && r.h === 28), 'blue pole');
 });
